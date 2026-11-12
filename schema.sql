@@ -87,3 +87,15 @@ create table if not exists app_settings (
     key    text primary key,
     value  text
 );
+
+-- One row per match per paid poll that returned the match: when it was polled
+-- and which bookmakers priced it. odds_snapshots only stores CHANGES, so this
+-- is what tells "price unchanged" apart from "bookmaker missing", and gives
+-- the true snapshot times for each match.
+create table if not exists match_polls (
+    matchup_id   bigint not null references matchups(id) on delete cascade,
+    captured_at  timestamptz not null,
+    ledger_id    bigint references credit_ledger(id) on delete set null,
+    bookmakers   text[] not null,
+    primary key (matchup_id, captured_at)
+);

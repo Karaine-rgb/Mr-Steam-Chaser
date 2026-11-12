@@ -7,6 +7,9 @@ time. If the prices and lines are identical, nothing is written. A book that
 disappears from a response writes nothing either; its last row simply stays
 the latest.
 
+Every poll also writes one match_polls row per covered match (time and
+bookmakers present), so analysis can rebuild each book's full series.
+
 Kickoff rule (same as the predecessor tool): rows for a match whose kickoff
 has passed are never stored, even if the response was requested just before.
 """
@@ -72,5 +75,13 @@ async def ingest_odds(pool, events: list[dict], captured_at: datetime, ledger_id
                                      r.fair_home, r.fair_draw, r.fair_away, ledger_id))
             if to_write:
                 await con.copy_records_to_table("odds_snapshots", records=to_write, columns=COLUMNS)
+            # Record the poll itself for every match it covered, changed or not.
+            seen: dict[int, set[str]] = defaultdict(set)
+            for (mid, book, _market) in groups:
+                seen[mid].add(book)
+            await con.executemany(
+                "insert into match_polls (matchup_id, captured_at, ledger_id, bookmakers) values ($1, $2, $3, $4) "
+                "on conflict (matchup_id, captured_at) do nothing",
+                [(mid, captured_at, ledger_id, sorted(books)) for mid, books in seen.items()])
     return {"stored": len(to_write), "unchanged": unchanged, "dropped": dropped,
             "matches": len({k[0] for k in groups})}

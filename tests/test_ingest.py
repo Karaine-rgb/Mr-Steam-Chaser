@@ -103,3 +103,13 @@ async def test_line_move_and_multi_line_groups(pool):
     # same two lines again, listed in the other order: unchanged
     two_swapped = _line_event([(2.5, 1.95, 1.9), (2.25, 1.8, 2.05)])
     assert (await ingest_odds(pool, two_swapped, T0 + timedelta(hours=3), None))["stored"] == 0
+
+
+async def test_every_poll_is_recorded_even_when_nothing_changed(pool, epl):
+    await track(pool, epl[:2])
+    await ingest_odds(pool, epl, T0, None)
+    await ingest_odds(pool, epl, T0 + timedelta(hours=1), None)
+    async with pool.acquire() as con:
+        rows = await con.fetch("select matchup_id, captured_at, bookmakers from match_polls order by captured_at")
+    assert len(rows) == 4  # 2 matches x 2 polls
+    assert "pinnacle" in rows[0]["bookmakers"]
