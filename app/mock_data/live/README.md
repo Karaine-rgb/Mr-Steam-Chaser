@@ -12,6 +12,6 @@ are listed below.
 | `events_soccer_germany_bundesliga.json` | `GET /v4/sports/soccer_germany_bundesliga/events` | 0 | 0 |
 | `odds_soccer_epl_h2h.json` | `GET /v4/sports/soccer_epl/odds?markets=h2h&oddsFormat=decimal&bookmakers=pinnacle,betfair_ex_eu,matchbook,smarkets,onexbet,marathonbet,williamhill,unibet_uk,betway` | 1 | 1 |
 
-Do not edit these files. Tests that need other cases (quarter lines, missing
-books, empty events) use hand-written fixtures in a separate folder, labelled
-as hand-written.
+Do not edit these files. They power mock mode (ODDS_API_MOCK=1) and the tests.
+Cases not seen live (quarter lines, missing books, empty events) are
+hand-written inside the tests and labelled as such.
