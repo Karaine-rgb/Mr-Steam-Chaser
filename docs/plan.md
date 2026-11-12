@@ -202,7 +202,7 @@ real recorded responses (key stripped).
 | 5 | Analysis + export + scorecard | per-match book comparison (best price, margin per book, off-market spread vs reference), Pinnacle-as-reference or consensus (labelled), steam per bookmaker + "confirmed in >1 book", coarse-data note, scorecard, CSV export | de-vig/margin, steam on coarse data (short windows skipped), multi-book confirmation, export columns stable |
 | 6 | Railway + Supabase guide | `Procfile`, README with `<OWNER>/<REPO_NAME>` placeholders | fresh-start smoke test in mock mode |
 
-### What I will reuse from Sharp Karaine (copied and adapted, never imported)
+### What I will reuse from the predecessor tool (copied and adapted, never imported)
 
 `odds.py` (power de-vig, margin columns), `signals.py` (move spans, steam,
 early/late, favourite), `scorecard.py`, `storage_guard.py`, `round_delete.py`,
@@ -231,7 +231,7 @@ defaults.
 
 ## 5. Decisions I need from you
 
-1. **Repository.** This session is attached to `Karaine-rgb/Mr-Steam-Chaser`
+1. **Repository.** This session is attached to `<OWNER>/<REPO_NAME>`
    (empty, no commits). Is that the new repo for Sharp Odds?
 2. **Branch.** The session is set to develop on `claude/sharp-odds-setup-6wd9ag`.
    The repo has no `main` yet. Pushing a feature branch first would make *it*

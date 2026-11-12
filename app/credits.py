@@ -244,26 +244,35 @@ class CreditManager:
             )
         return [dict(r) for r in rows]
 
+    # ---- ledger writes ----------------------------------------------
+    async def _locked_execute(self, sql: str, *args) -> str:
+        """Every ledger write takes the same advisory lock as the budget check
+        in paid_odds. Without it, a call finishing between the check's two
+        queries made the check undercount by that call (a real race that a
+        test caught)."""
+        async with self.pool.acquire() as con:
+            async with con.transaction():
+                await con.execute("select pg_advisory_xact_lock($1)", LEDGER_LOCK_KEY)
+                return await con.execute(sql, *args)
+
     # ---- housekeeping -----------------------------------------------
     async def recover_stale_pending(self) -> int:
         """Pending rows older than the stale limit come from a crash or a hung
         request: mark them 'unknown' (still counted at expected cost)."""
         cutoff = self.clock() - self.pending_stale
-        async with self.pool.acquire() as con:
-            result = await con.execute(
+        result = await self._locked_execute(
                 "update credit_ledger set status = 'unknown', finished_at = $2, "
                 "reason = coalesce(reason, '') || ' [no response recorded; counted at expected cost]' "
                 "where status = 'pending' and created_at < $1",
                 cutoff, self.clock(),
-            )
+        )
         return int(result.split()[-1])
 
     async def _log_free(self, endpoint: str, result: ApiResult | None, kind: str,
                         sport_key: str | None, error: str | None = None) -> None:
         if result is not None and result.usage.last:
             logger.warning("Free endpoint %s reported a cost of %s credits", endpoint, result.usage.last)
-        async with self.pool.acquire() as con:
-            await con.execute(
+        await self._locked_execute(
                 "insert into credit_ledger (created_at, finished_at, endpoint, is_paid, is_mock, kind, sport_key, "
                 "expected_cost, charged, used_after, remaining_after, http_status, events_returned, error_code, status, reason) "
                 "values ($1, $1, $2, false, $3, $4, $5, 0, $6, $7, $8, $9, $10, $11, $12, $13)",
@@ -276,7 +285,7 @@ class CreditManager:
                 result.error_code if result else None,
                 ("ok" if result.ok else "error") if result else "not_sent",
                 error,
-            )
+        )
 
     # ---- free calls (logged, never gated) ----------------------------
     async def free_sports(self, kind: str = "discovery", all_sports: bool = True) -> ApiResult:
@@ -361,8 +370,7 @@ class CreditManager:
 
     async def _finish(self, ledger_id: int, result: ApiResult | None, status: str,
                       error: str | None, charged: int | None) -> None:
-        async with self.pool.acquire() as con:
-            await con.execute(
+        await self._locked_execute(
                 "update credit_ledger set finished_at = $2, status = $3, charged = $4, used_after = $5, "
                 "remaining_after = $6, http_status = $7, events_returned = $8, error_code = $9, "
                 "reason = case when $10::text is null then reason else coalesce(reason, '') || ' [' || $10 || ']' end "
@@ -374,4 +382,4 @@ class CreditManager:
                 result.event_count if result else None,
                 result.error_code if result else None,
                 error,
-            )
+        )

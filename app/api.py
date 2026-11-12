@@ -16,6 +16,11 @@ from app.planner import estimate_cost
 logger = logging.getLogger("api")
 
 
+class CostQuery(BaseModel):
+    markets: list[str] = Field(default_factory=lambda: ["h2h"])
+    bookmakers: list[str] = Field(default_factory=list)
+
+
 class AppState:
     settings: Settings
     client: OddsApiClient
@@ -70,10 +75,6 @@ def create_app(settings: Settings | None = None, client: OddsApiClient | None = 
         """Free /sports call; refreshes the API's real usage counter."""
         b = await state.credits.sync()
         return {"budget": b.as_dict()}
-
-    class CostQuery(BaseModel):
-        markets: list[str] = Field(default_factory=lambda: ["h2h"])
-        bookmakers: list[str] = Field(default_factory=list)
 
     @app.post("/api/credits/estimate")
     async def credits_estimate(q: CostQuery):

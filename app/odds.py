@@ -1,6 +1,6 @@
 """Odds conversion and de-vigging.
 
-Copied from the Sharp Karaine reference implementation (app/odds.py) and
+Copied from the predecessor tool (a Pinnacle-only tracker, its app/odds.py) and
 adapted: The Odds API already returns decimal odds, so the American-odds
 converter is gone. The power de-vig and the margin columns are unchanged, so
 fair probabilities and margins are computed exactly as in the old tool.

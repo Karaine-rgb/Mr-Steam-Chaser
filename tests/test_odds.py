@@ -1,4 +1,4 @@
-"""De-vig and margin columns (formulas copied unchanged from Sharp Karaine)."""
+"""De-vig and margin columns (formulas copied unchanged from the predecessor tool)."""
 import pytest
 
 from app.odds import MARGIN_COLUMNS, fair_probs_from_decimal_odds, implied_prob, margin_columns, power_devig
