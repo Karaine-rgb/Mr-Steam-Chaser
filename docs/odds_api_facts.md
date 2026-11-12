@@ -111,17 +111,28 @@ will be labelled as such. Leagues it cannot place go under "Other".
 ❓ Not checked: whether the leagues in a typical SportPesa Megajackpot (often
 lower divisions and smaller countries) are covered. Discovery will show it.
 
-## 8. Still unverified (needs one live response)
+## 8. Live check results (2026-11-12, free-plan key, 1 credit spent)
 
-1. Real soccer `title`/`description` text from `/sports` (free call).
-2. Whether a **free** key actually returns `pinnacle` and `betfair_ex_*` prices for soccer.
-3. Whether `h2h_lay` adds cost.
-4. Whether soccer `spreads` use quarter lines, and how many EU/UK books price spreads/totals for soccer.
-5. Time zone of the monthly reset.
+Recorded responses are in `tests/fixtures/live/` (no key in them).
 
-Items 1 and part of 5 need only free calls (`/sports`, `/events`). Items 2–4
-need one paid `/odds` call (**1 credit** for h2h with ≤10 bookmakers). I will
-not make it without your approval.
+| Question | Result |
+|---|---|
+| `/sports` and `/events` are free | ✅ Confirmed: `x-requests-last: 0`, `x-requests-used` stayed 0. |
+| Usage headers present on free calls | ✅ Yes, so a free call can re-sync the counter. |
+| `/sports?all=true` content | 187 sports, **68 soccer (45 active)**. Real examples: `soccer_epl` → title "EPL"; `soccer_germany_bundesliga` → "Bundesliga - Germany"; `soccer_australia_aleague` → "A-League", description "Aussie Soccer". Titles do **not** follow one pattern, so country grouping will use the key plus a small mapping table. |
+| `/odds` cost for h2h, 9 bookmakers | ✅ **1 credit** (`x-requests-last: 1`, remaining 499). |
+| Does `h2h_lay` add cost? | **No** on this call: exchanges returned `h2h_lay` and the charge was still 1. |
+| Pinnacle on a free key | ✅ **Yes**: priced on **all 20** EPL events. |
+| Betfair Exchange on a free key | ✅ `betfair_ex_eu` priced 10 of 20 events. |
+| Other books (20 events) | `onexbet` 20, `smarkets` 20, `unibet_uk` 20, `marathonbet` 20, `williamhill` 10, `betway` 10, **`matchbook` 0** (not returned at all). |
+| Soccer h2h is 3-way | ✅ Every h2h market had 3 outcomes, including `"Draw"`. Outcome names matched `home_team`/`away_team` exactly. |
+| **Outcome order** | ⚠️ **Not home/draw/away.** Example: `Fulham, Manchester City, Draw` for Man City (home) vs Fulham. The parser must map by **name**, never by position. |
+| Field names | bookmaker `{key, title, last_update, markets}`; market `{key, last_update, outcomes}`, matching the spec. |
+| bet365 on the free plan | ❌ Not available. Only `bet365_au` exists: "Only available on paid subscriptions", AFL/NRL only. |
+
+**Still unverified:** soccer quarter lines and spreads/totals coverage (would
+cost 1–2 more credits to check; not done), and the time zone of the monthly
+reset (the first chance to see it is 1 December).
 
 ## Sources read (2026-11-12)
 

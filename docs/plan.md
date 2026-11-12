@@ -202,7 +202,7 @@ real recorded responses (key stripped).
 | 5 | Analysis + export + scorecard | per-match book comparison (best price, margin per book, off-market spread vs reference), Pinnacle-as-reference or consensus (labelled), steam per bookmaker + "confirmed in >1 book", coarse-data note, scorecard, CSV export | de-vig/margin, steam on coarse data (short windows skipped), multi-book confirmation, export columns stable |
 | 6 | Railway + Supabase guide | `Procfile`, README with `<OWNER>/<REPO_NAME>` placeholders | fresh-start smoke test in mock mode |
 
-### What I will reuse from Sharp Karaine (copied and adapted, never imported)
+### What I will reuse from the predecessor tool (copied and adapted, never imported)
 
 `odds.py` (power de-vig, margin columns), `signals.py` (move spans, steam,
 early/late, favourite), `scorecard.py`, `storage_guard.py`, `round_delete.py`,
@@ -231,7 +231,7 @@ defaults.
 
 ## 5. Decisions I need from you
 
-1. **Repository.** This session is attached to `Karaine-rgb/Mr-Steam-Chaser`
+1. **Repository.** This session is attached to `<OWNER>/<REPO_NAME>`
    (empty, no commits). Is that the new repo for Sharp Odds?
 2. **Branch.** The session is set to develop on `claude/sharp-odds-setup-6wd9ag`.
    The repo has no `main` yet. Pushing a feature branch first would make *it*
@@ -239,9 +239,11 @@ defaults.
    stub, these docs) to `main`, then work on the feature branch?
 3. **Budget defaults.** Balanced preset, h2h only, ≤10 bookmakers, reserve 50,
    pause 90 %. OK?
-4. **Default bookmakers (10 = 1 credit).** Suggestion: `pinnacle`,
-   `betfair_ex_eu`, `matchbook`, `smarkets`, `onexbet`, `marathonbet`,
-   `williamhill`, `sport888`, `unibet_uk`, `betway`. Change as you like.
+4. **Default bookmakers (≤10 = 1 credit).** Agreed list, with `sport888` removed:
+   `pinnacle`, `betfair_ex_eu`, `matchbook`, `smarkets`, `onexbet`, `marathonbet`,
+   `williamhill`, `unibet_uk`, `betway` (9). bet365 was requested but is not
+   available on the free plan (only `bet365_au`, paid, AFL/NRL). `matchbook`
+   returned no EPL prices in the live check. Both are open questions.
 5. **Live check.** To replace guesses with real fixtures I need: (a) free calls to
    `/sports` and `/events` (0 credits), and (b) **one** `/odds` call for one soccer
    league, h2h, the 10 books above (**1 credit**). This session can't reach
