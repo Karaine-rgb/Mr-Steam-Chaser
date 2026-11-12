@@ -73,6 +73,12 @@ class Settings:
     db_critical_pct: float = 90.0
     db_pause_pct: float = 95.0
 
+    # Optional HTTP Basic auth for the whole site (except /api/health). Strongly
+    # recommended on a public URL: without it anyone with the link can spend
+    # credits with "Refresh now" or delete rounds.
+    app_user: str = "sharp"
+    app_password: str = field(default="", repr=False)
+
     poller_enabled: bool = True
     poll_tick_seconds: float = 30.0
 
@@ -99,6 +105,8 @@ def load_settings(env: dict[str, str] | None = None) -> Settings:
         db_warn_pct=float(e.get("DB_WARN_PCT", "80")),
         db_critical_pct=float(e.get("DB_CRITICAL_PCT", "90")),
         db_pause_pct=float(e.get("DB_PAUSE_PCT", "95")),
+        app_user=e.get("APP_USER", "sharp"),
+        app_password=e.get("APP_PASSWORD", ""),
         poller_enabled=(e.get("POLLER_ENABLED", "1").strip().lower() not in {"0", "false", "no", "off"}),
         poll_tick_seconds=float(e.get("POLL_TICK_SECONDS", "30")),
         port=int(e.get("PORT", "8000")),

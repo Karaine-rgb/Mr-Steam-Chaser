@@ -1,11 +1,13 @@
 """FastAPI app: credits, discovery, dashboard, storage. The poller runs in-process."""
 from __future__ import annotations
 
+import base64
 import logging
+import secrets
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -111,6 +113,27 @@ def create_app(settings: Settings | None = None, client: OddsApiClient | None = 
 
     app = FastAPI(title="Sharp Odds", lifespan=lifespan)
 
+    if settings.app_password:
+        expected_user = settings.app_user.encode()
+        expected_pass = settings.app_password.encode()
+
+        @app.middleware("http")
+        async def basic_auth(request: Request, call_next):
+            if request.url.path == "/api/health":
+                return await call_next(request)
+            ok = False
+            header = request.headers.get("authorization", "")
+            if header.lower().startswith("basic "):
+                try:
+                    user, _, pw = base64.b64decode(header[6:]).partition(b":")
+                    ok = secrets.compare_digest(user, expected_user) & secrets.compare_digest(pw, expected_pass)
+                except (ValueError, base64.binascii.Error):
+                    ok = False
+            if not ok:
+                return Response("Login required", status_code=401,
+                                headers={"WWW-Authenticate": 'Basic realm="Sharp Odds", charset="UTF-8"'})
+            return await call_next(request)
+
     async def guarded(coro):
         try:
             return await coro
@@ -121,6 +144,12 @@ def create_app(settings: Settings | None = None, client: OddsApiClient | None = 
 
     @app.get("/api/health")
     async def health():
+        """Used by Railway's deploy healthcheck: answers only when the database works."""
+        try:
+            async with state.pool.acquire() as con:
+                await con.fetchval("select 1")
+        except Exception as exc:
+            raise HTTPException(503, f"database unavailable: {type(exc).__name__}") from None
         return {"ok": True, "mock": state.client.is_mock}
 
     @app.get("/api/credits")
