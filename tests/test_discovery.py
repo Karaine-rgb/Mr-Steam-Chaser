@@ -163,7 +163,7 @@ async def test_add_rejects_started_match(discovery, clock):
 # ---- HTTP layer --------------------------------------------------------------
 
 async def test_http_discovery_flow_spends_nothing(pool, client, mock_api):
-    app = create_app(load_settings({"ODDS_API_MOCK": "1"}), client=client, pool=pool)
+    app = create_app(load_settings({"ODDS_API_MOCK": "1", "POLLER_ENABLED": "0"}), client=client, pool=pool)
     async with app.router.lifespan_context(app):
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://t") as http:
             assert (await http.get("/api/config")).json()["default_bookmakers"] == BOOKS

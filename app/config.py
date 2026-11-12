@@ -73,6 +73,9 @@ class Settings:
     db_critical_pct: float = 90.0
     db_pause_pct: float = 95.0
 
+    poller_enabled: bool = True
+    poll_tick_seconds: float = 30.0
+
     port: int = 8000
 
 
@@ -96,6 +99,8 @@ def load_settings(env: dict[str, str] | None = None) -> Settings:
         db_warn_pct=float(e.get("DB_WARN_PCT", "80")),
         db_critical_pct=float(e.get("DB_CRITICAL_PCT", "90")),
         db_pause_pct=float(e.get("DB_PAUSE_PCT", "95")),
+        poller_enabled=(e.get("POLLER_ENABLED", "1").strip().lower() not in {"0", "false", "no", "off"}),
+        poll_tick_seconds=float(e.get("POLL_TICK_SECONDS", "30")),
         port=int(e.get("PORT", "8000")),
     )
 
