@@ -13,8 +13,8 @@ env/
 
 # Data exports and dumps
 *.csv
-exports/
-data/
+/exports/
+/data/
 *.dump
 *.sql.gz
 

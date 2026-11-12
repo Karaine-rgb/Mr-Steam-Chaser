@@ -115,3 +115,19 @@ def test_frontend_has_no_duplicate_function_names():
 def test_frontend_loads_no_third_party_scripts():
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
     assert re.findall(r"<script[^>]+src=\"https?://", html) == []
+
+
+def test_no_app_file_is_ignored_by_git():
+    """A clean clone (what Railway builds) must contain every file the app
+    reads. This once failed: a broad 'data/' ignore rule dropped app/data/."""
+    import subprocess
+    try:
+        out = subprocess.run(["git", "-C", str(ROOT), "status", "--ignored", "--porcelain"],
+                             capture_output=True, text=True, check=True).stdout
+    except (OSError, subprocess.CalledProcessError):
+        pytest.skip("git not available")
+    ignored = [line[3:] for line in out.splitlines() if line.startswith("!! ")]
+    needed = [p for p in ignored if p.startswith(("app/", "frontend/", "schema.sql", "main.py", "railway.json",
+                                                  "Procfile", "requirements", ".python-version"))
+              and "__pycache__" not in p]
+    assert needed == []

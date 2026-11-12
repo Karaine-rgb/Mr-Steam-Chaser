@@ -1,0 +1,1081 @@
+{
+ "source": "https://the-odds-api.com/sports-odds-data/bookmaker-apis.html",
+ "read_on": "2026-11-12",
+ "note": "Copied from the docs page. live_check_epl = events priced in the 1-credit EPL h2h check of 2026-11-12 (out of 20). us_dfs (fantasy sites) left out.",
+ "bookmakers": [
+  {
+   "key": "betright",
+   "title": "Bet Right",
+   "regions": [
+    "au"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "bet365_au",
+   "title": "Bet365 AU",
+   "regions": [
+    "au"
+   ],
+   "note": "Only available on paid subscriptions. Coverage currently limited to h2h, spreads and totals for AFL and NRL",
+   "paid_only": true,
+   "exchange": false
+  },
+  {
+   "key": "betfair_ex_au",
+   "title": "Betfair Exchange",
+   "regions": [
+    "au"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": true
+  },
+  {
+   "key": "betr_au",
+   "title": "Betr",
+   "regions": [
+    "au"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "dabble_au",
+   "title": "Dabble AU",
+   "regions": [
+    "au"
+   ],
+   "note": "Only available on paid subscriptions",
+   "paid_only": true,
+   "exchange": false
+  },
+  {
+   "key": "ladbrokes_au",
+   "title": "Ladbrokes",
+   "regions": [
+    "au"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "neds",
+   "title": "Neds",
+   "regions": [
+    "au"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "picklebet_au",
+   "title": "Picklebet (AU)",
+   "regions": [
+    "au"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "playup",
+   "title": "PlayUp",
+   "regions": [
+    "au"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "pointsbetau",
+   "title": "PointsBet (AU)",
+   "regions": [
+    "au"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "sportsbet",
+   "title": "SportsBet",
+   "regions": [
+    "au"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "tab",
+   "title": "TAB",
+   "regions": [
+    "au"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "tabtouch",
+   "title": "TABtouch",
+   "regions": [
+    "au"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "unibet",
+   "title": "Unibet",
+   "regions": [
+    "au"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "bet99_ca_on",
+   "title": "BET99 (CA - ON)",
+   "regions": [
+    "ca"
+   ],
+   "note": "Only available on paid subscriptions",
+   "paid_only": true,
+   "exchange": false
+  },
+  {
+   "key": "betano_ca_on",
+   "title": "Betano (CA - ON)",
+   "regions": [
+    "ca"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "betmgm_ca_on",
+   "title": "BetMGM (CA - ON)",
+   "regions": [
+    "ca"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "betrivers_ca_on",
+   "title": "BetRivers (CA - ON)",
+   "regions": [
+    "ca"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "playalberta",
+   "title": "Play Alberta",
+   "regions": [
+    "ca"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "playnow_ca",
+   "title": "PlayNow (CA)",
+   "regions": [
+    "ca"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "pointsbetca",
+   "title": "PointsBet (CA - ON)",
+   "regions": [
+    "ca"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "proline_ca_on",
+   "title": "PROLINE (CA - ON)",
+   "regions": [
+    "ca"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "sportsinteraction_ca_on",
+   "title": "Sports Interaction (CA - ON)",
+   "regions": [
+    "ca"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "onexbet",
+   "title": "1xBet",
+   "regions": [
+    "eu"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false,
+   "live_check_epl": "20/20"
+  },
+  {
+   "key": "betclic_fr",
+   "title": "Betclic (FR)",
+   "regions": [
+    "eu",
+    "fr"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "betfair_ex_eu",
+   "title": "Betfair Exchange",
+   "regions": [
+    "eu"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": true,
+   "live_check_epl": "10/20"
+  },
+  {
+   "key": "betsson",
+   "title": "Betsson",
+   "regions": [
+    "eu",
+    "se"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "coolbet",
+   "title": "Coolbet",
+   "regions": [
+    "eu"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "everygame",
+   "title": "Everygame",
+   "regions": [
+    "eu"
+   ],
+   "note": "Formerly Intertops",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "gtbets",
+   "title": "GTbets",
+   "regions": [
+    "eu"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "leovegas_se",
+   "title": "LeoVegas (SE)",
+   "regions": [
+    "eu",
+    "se"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "marathonbet",
+   "title": "Marathon Bet",
+   "regions": [
+    "eu"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false,
+   "live_check_epl": "20/20"
+  },
+  {
+   "key": "nordicbet",
+   "title": "NordicBet",
+   "regions": [
+    "eu",
+    "se"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "pinnacle",
+   "title": "Pinnacle",
+   "regions": [
+    "eu"
+   ],
+   "note": "Odds are from public website which may incur a delay",
+   "paid_only": false,
+   "exchange": false,
+   "live_check_epl": "20/20"
+  },
+  {
+   "key": "pmu_fr",
+   "title": "PMU (FR)",
+   "regions": [
+    "eu",
+    "fr"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "tipico_de",
+   "title": "Tipico (DE)",
+   "regions": [
+    "eu"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "unibet_fr",
+   "title": "Unibet (FR)",
+   "regions": [
+    "eu",
+    "fr"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "unibet_nl",
+   "title": "Unibet (NL)",
+   "regions": [
+    "eu"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "unibet_se",
+   "title": "Unibet (SE)",
+   "regions": [
+    "eu",
+    "se"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "winamax_de",
+   "title": "Winamax (DE)",
+   "regions": [
+    "eu"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "winamax_fr",
+   "title": "Winamax (FR)",
+   "regions": [
+    "eu",
+    "fr"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "leovegas_fi",
+   "title": "LeoVegas (FI)",
+   "regions": [
+    "fi"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "unibet_fi",
+   "title": "Unibet (FI)",
+   "regions": [
+    "fi"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "veikkaus_fi",
+   "title": "Veikkaus (FI)",
+   "regions": [
+    "fi"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "netbet_fr",
+   "title": "NetBet (FR)",
+   "regions": [
+    "fr"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "sport888_se",
+   "title": "888sport (SE)",
+   "regions": [
+    "se"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "atg_se",
+   "title": "ATG (SE)",
+   "regions": [
+    "se"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "betinia_se",
+   "title": "Betinia (SE)",
+   "regions": [
+    "se"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "betmgm_se",
+   "title": "BetMGM (SE)",
+   "regions": [
+    "se"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "campobet_se",
+   "title": "CampoBet (SE)",
+   "regions": [
+    "se"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "hajper_se",
+   "title": "Hajper (SE)",
+   "regions": [
+    "se"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "mrgreen_se",
+   "title": "Mr Green (SE)",
+   "regions": [
+    "se"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "expekt_se",
+   "title": "Nya Expekt (SE)",
+   "regions": [
+    "se"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "svenskaspel_se",
+   "title": "Svenska Spel",
+   "regions": [
+    "se"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "sport888",
+   "title": "888sport",
+   "regions": [
+    "uk",
+    "eu"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "betvictor",
+   "title": "Bet Victor",
+   "regions": [
+    "uk",
+    "eu"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "betano_uk",
+   "title": "Betano (UK)",
+   "regions": [
+    "uk"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "betfair_ex_uk",
+   "title": "Betfair Exchange",
+   "regions": [
+    "uk"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": true
+  },
+  {
+   "key": "betfair_sb_uk",
+   "title": "Betfair Sportsbook",
+   "regions": [
+    "uk"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "betfred_uk",
+   "title": "Betfred (UK)",
+   "regions": [
+    "uk"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "betway",
+   "title": "Betway",
+   "regions": [
+    "uk"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false,
+   "live_check_epl": "10/20"
+  },
+  {
+   "key": "boylesports",
+   "title": "BoyleSports",
+   "regions": [
+    "uk"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "casumo",
+   "title": "Casumo",
+   "regions": [
+    "uk"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "coral",
+   "title": "Coral",
+   "regions": [
+    "uk"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "grosvenor",
+   "title": "Grosvenor",
+   "regions": [
+    "uk"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "ladbrokes_uk",
+   "title": "Ladbrokes",
+   "regions": [
+    "uk"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "leovegas",
+   "title": "LeoVegas",
+   "regions": [
+    "uk"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "livescorebet",
+   "title": "LiveScore Bet",
+   "regions": [
+    "uk"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "matchbook",
+   "title": "Matchbook",
+   "regions": [
+    "uk",
+    "eu"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": true,
+   "live_check_epl": "0/20"
+  },
+  {
+   "key": "paddypower",
+   "title": "Paddy Power",
+   "regions": [
+    "uk"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "skybet",
+   "title": "Sky Bet",
+   "regions": [
+    "uk"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "smarkets",
+   "title": "Smarkets",
+   "regions": [
+    "uk"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": true,
+   "live_check_epl": "20/20"
+  },
+  {
+   "key": "unibet_uk",
+   "title": "Unibet",
+   "regions": [
+    "uk"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false,
+   "live_check_epl": "20/20"
+  },
+  {
+   "key": "virginbet",
+   "title": "Virgin Bet",
+   "regions": [
+    "uk"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "williamhill",
+   "title": "William Hill (UK)",
+   "regions": [
+    "uk",
+    "eu"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false,
+   "live_check_epl": "10/20"
+  },
+  {
+   "key": "betmgm",
+   "title": "BetMGM",
+   "regions": [
+    "us"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "betonlineag",
+   "title": "BetOnline.ag",
+   "regions": [
+    "us",
+    "eu"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "betrivers",
+   "title": "BetRivers",
+   "regions": [
+    "us"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "betus",
+   "title": "BetUS",
+   "regions": [
+    "us"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "bovada",
+   "title": "Bovada",
+   "regions": [
+    "us"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "williamhill_us",
+   "title": "Caesars",
+   "regions": [
+    "us"
+   ],
+   "note": "Only available on paid subscriptions",
+   "paid_only": true,
+   "exchange": false
+  },
+  {
+   "key": "draftkings",
+   "title": "DraftKings",
+   "regions": [
+    "us"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "fanatics",
+   "title": "Fanatics",
+   "regions": [
+    "us"
+   ],
+   "note": "Only available on paid subscriptions",
+   "paid_only": true,
+   "exchange": false
+  },
+  {
+   "key": "fanduel",
+   "title": "FanDuel",
+   "regions": [
+    "us"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "lowvig",
+   "title": "LowVig.ag",
+   "regions": [
+    "us"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "mybookieag",
+   "title": "MyBookie.ag",
+   "regions": [
+    "us",
+    "eu"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "ballybet",
+   "title": "Bally Bet",
+   "regions": [
+    "us2"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "betanysports",
+   "title": "BetAnything",
+   "regions": [
+    "us2",
+    "eu"
+   ],
+   "note": "Formerly BetAnySports",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "betparx",
+   "title": "betPARX",
+   "regions": [
+    "us2"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "betwhale",
+   "title": "Betwhale",
+   "regions": [
+    "us2"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "courtside",
+   "title": "Courtside",
+   "regions": [
+    "us2"
+   ],
+   "note": "Only available on paid subscriptions",
+   "paid_only": true,
+   "exchange": false
+  },
+  {
+   "key": "fliff",
+   "title": "Fliff",
+   "regions": [
+    "us2"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "hardrockbet",
+   "title": "Hard Rock Bet",
+   "regions": [
+    "us2"
+   ],
+   "note": "Indiana sportsbook, currently same odds as several other states",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "hardrockbet_az",
+   "title": "Hard Rock Bet (AZ)",
+   "regions": [
+    "us2"
+   ],
+   "note": "Only populated if odds differ from the hardrockbet key",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "hardrockbet_fl",
+   "title": "Hard Rock Bet (FL)",
+   "regions": [
+    "us2"
+   ],
+   "note": "Only populated if odds differ from the hardrockbet key",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "hardrockbet_oh",
+   "title": "Hard Rock Bet (OH)",
+   "regions": [
+    "us2"
+   ],
+   "note": "Only populated if odds differ from the hardrockbet key",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "rebet",
+   "title": "ReBet",
+   "regions": [
+    "us2"
+   ],
+   "note": "Only available on paid subscriptions",
+   "paid_only": true,
+   "exchange": false
+  },
+  {
+   "key": "espnbet",
+   "title": "theScore Bet",
+   "regions": [
+    "us2"
+   ],
+   "note": "Formerly ESPN Bet",
+   "paid_only": false,
+   "exchange": false
+  },
+  {
+   "key": "betopenly",
+   "title": "BetOpenly",
+   "regions": [
+    "us_ex"
+   ],
+   "note": "Use the \"includeBetLimits\" parameter to find open bets",
+   "paid_only": false,
+   "exchange": true
+  },
+  {
+   "key": "kalshi",
+   "title": "Kalshi",
+   "regions": [
+    "us_ex"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": true
+  },
+  {
+   "key": "limitless",
+   "title": "Limitless Exchange",
+   "regions": [
+    "us_ex"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": true
+  },
+  {
+   "key": "novig",
+   "title": "Novig",
+   "regions": [
+    "us_ex"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": true
+  },
+  {
+   "key": "polymarket",
+   "title": "Polymarket",
+   "regions": [
+    "us_ex"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": true
+  },
+  {
+   "key": "polymarket_us",
+   "title": "Polymarket (US)",
+   "regions": [
+    "us_ex"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": true
+  },
+  {
+   "key": "prophetx",
+   "title": "ProphetX",
+   "regions": [
+    "us_ex"
+   ],
+   "note": "",
+   "paid_only": false,
+   "exchange": true
+  }
+ ]
+}
