@@ -110,8 +110,58 @@ async function run() {
     // added matches are now marked as taken
     await page.waitForSelector("#match-list .tag-in");
     await page.keyboard.press("Escape");
-    await page.waitForSelector(`text=UI test ${width}`);
     check((await overflow(page)).length === 0, `${width}px overflow after adding: ${JSON.stringify(await overflow(page))}`);
+
+    // ---- dashboard: the new round is selected and the poller fills it ----
+    await page.waitForFunction((w) => document.getElementById("round-select").value === `UI test ${w}`, width);
+    await page.waitForFunction(() => document.querySelectorAll("#match-body tr[data-id]").length === 3);
+    await page.evaluate(() => { lastSig = null; return loadTable(); });
+    await page.waitForFunction(async () => {           // opening snapshot stored by the poller
+      lastSig = null; await loadTable();
+      return /Pinnacle|consensus/.test(document.getElementById("match-body").textContent);
+    }, null, { timeout: 30000, polling: 1000 });
+    check((await overflow(page)).length === 0, `${width}px dashboard overflow: ${JSON.stringify(await overflow(page))}`);
+    if (SHOTS) await page.screenshot({ path: `${SHOTS}/dashboard-${width}.png` });
+
+    // unsaved scores survive refreshes, saved scores reach the server
+    const row = page.locator("#match-body tr[data-id]").first();
+    await row.locator('.result-input[data-side="home"]').fill("2");
+    await page.evaluate(() => { lastSig = null; return loadTable(); });
+    const typed = await page.locator("#match-body tr[data-id]").first().locator('.result-input[data-side="home"]').inputValue();
+    check(typed === "2", `${width}px typed score lost on refresh (got "${typed}")`);
+    await page.locator("#match-body tr[data-id]").first().locator('.result-input[data-side="away"]').fill("1");
+    await page.locator("#match-body tr[data-id]").first().locator(".result-save").click();
+    await page.waitForFunction(async () => {
+      const d = await (await fetch("/api/matches")).json();
+      return d.matches.some((m) => m.home_score === 2 && m.away_score === 1);
+    });
+
+    // drill-down with charts
+    await page.locator("#match-body tr[data-id] td.c2").first().click();
+    await page.waitForSelector("#dd-latest table");
+    await page.waitForSelector("#chart-fair canvas");
+    await page.waitForTimeout(300);
+    const ddOverflow = await overflow(page, "#drilldown");
+    check(ddOverflow.length === 0, `${width}px drill-down overflow: ${JSON.stringify(ddOverflow)}`);
+    if (SHOTS) await page.screenshot({ path: `${SHOTS}/drilldown-${width}.png` });
+    await page.click("#dd-close");
+
+    // refresh-now shows its cost and spends nothing when answered "No"
+    const usedBefore = (await (await page.request.get(BASE + "/api/credits")).json()).budget.used;
+    await page.click("#btn-refresh-round");
+    await page.waitForSelector("#modal-confirm:not(.hidden)");
+    const confirmText = await page.textContent("#confirm-text");
+    check(/Total: 1 credit/.test(confirmText), `${width}px refresh confirm text: ${confirmText}`);
+    await page.click("#confirm-no");
+    const usedAfter = (await (await page.request.get(BASE + "/api/credits")).json()).budget.used;
+    check(usedAfter === usedBefore, `${width}px "No" still spent credits (${usedBefore} -> ${usedAfter})`);
+
+    // storage window
+    await page.click("#storage-pill");
+    await page.waitForSelector("#storage-table-body tr");
+    await page.waitForTimeout(450);
+    check((await overflow(page, "#modal-storage")).length === 0, `${width}px storage modal overflow`);
+    await page.click("#btn-storage-close");
 
     // credit modal
     await page.click("#credit-pill");

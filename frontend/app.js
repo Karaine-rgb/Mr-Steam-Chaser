@@ -109,22 +109,427 @@ $("btn-credit-sync").onclick = async () => {
 };
 
 // ---------------------------------------------------------------------------
-// Rounds list
+// Shared helpers
+// ---------------------------------------------------------------------------
+function askYesNo(title, text, yesLabel = "Yes") {
+  return new Promise((resolve) => {
+    const yes = $("confirm-yes"), no = $("confirm-no");
+    $("confirm-title").textContent = title;
+    $("confirm-text").textContent = text;
+    yes.textContent = yesLabel;
+    const done = (answer) => { modal("modal-confirm", false); yes.onclick = no.onclick = null; resolve(answer); };
+    yes.onclick = () => done(true);
+    no.onclick = () => done(false);
+    modal("modal-confirm", true);
+  });
+}
+
+function countdown(iso) {
+  const ms = new Date(iso).getTime() - Date.now();
+  if (ms <= 0) return { text: "kicked off", cls: "countdown-live" };
+  const s = Math.floor(ms / 1000), d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+  const text = d > 0 ? `${d}d ${h}h ${m}m` : h > 0 ? `${h}h ${m}m` : `${m}m ${s % 60}s`;
+  return { text, cls: s <= 7200 ? "countdown-urgent" : "" };
+}
+
+function tickCountdowns() {
+  document.querySelectorAll(".countdown[data-start]").forEach((el) => {
+    const c = countdown(el.dataset.start);
+    if (el.textContent !== c.text) el.textContent = c.text;
+    const cls = `countdown ${c.cls}`.trim();
+    if (el.className !== cls) el.className = cls;
+  });
+}
+setInterval(tickCountdowns, 1000);
+
+const pct = (v) => (v == null ? "—" : `${(v * 100).toFixed(1)}`);
+const pp = (v) => (v == null ? "—" : `${v > 0 ? "+" : ""}${v.toFixed(2)}`);
+const ago = (iso) => {
+  if (!iso) return "never";
+  const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  return m < 60 ? `${m} min ago` : m < 2880 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`;
+};
+
+// ---------------------------------------------------------------------------
+// Rounds and the match table
 // ---------------------------------------------------------------------------
 let rounds = [];
+let currentRound = store.get("so.round", "");
+let lastSig = null;
 
 async function loadRounds() {
   try { rounds = await api("/rounds"); } catch { rounds = []; }
-  const list = $("rounds-list");
-  list.innerHTML = rounds.length
-    ? rounds.map((r) => `<div class="round-card">
-        <h4>${esc(r.round_label)}</h4>
-        <div class="meta">${esc(r.matches)} matches (${esc(r.monitored)} tracked) · ${esc(fmtWhen(r.first_kickoff))} → ${esc(fmtWhen(r.last_kickoff))}</div>
-        <div class="meta">${esc((r.bookmakers || []).length)} bookmakers · ${esc((r.markets || []).join(", "))} · ${esc(r.schedule_preset || "")}</div>
-      </div>`).join("")
-    : `<div class="dim">No rounds yet. Open Discovery to pick matches.</div>`;
+  const sel = $("round-select");
+  if (currentRound && !rounds.some((r) => r.round_label === currentRound)) currentRound = "";
+  sel.innerHTML = `<option value="">All rounds</option>` +
+    rounds.map((r) => `<option value="${esc(r.round_label)}">${esc(r.round_label)} (${esc(r.matches)})</option>`).join("");
+  sel.value = currentRound;
   $("round-names").innerHTML = rounds.map((r) => `<option value="${esc(r.round_label)}"></option>`).join("");
+  $("btn-refresh-round").disabled = !currentRound;
+  const r = rounds.find((x) => x.round_label === currentRound);
+  $("schedule-note").textContent = r
+    ? `${r.bookmakers.length} bookmakers · ${r.markets.join(", ")} · ${r.schedule_preset} schedule. Snapshots are hours apart far from kickoff; that is set by the credit budget, not the API.`
+    : "";
 }
+
+$("round-select").addEventListener("change", (e) => {
+  currentRound = e.target.value;
+  store.set("so.round", currentRound);
+  lastSig = null;
+  loadRounds();
+  loadTable();
+});
+
+function refCell(r) {
+  const ref = r.reference;
+  if (!ref) return `<span class="dim">no prices yet</span>`;
+  const src = ref.source === "pinnacle" ? "Pinnacle" : `consensus of ${ref.books}`;
+  return `<span class="hda"><b>${pct(ref.home)}</b> / ${pct(ref.draw)} / <b>${pct(ref.away)}</b></span><span class="sub">${esc(src)}</span>`;
+}
+
+function deltaCell(r) {
+  const d = r.delta_pp;
+  if (!d) return `<span class="dim">—</span>`;
+  const one = (v) => `<span class="${v > 0.005 ? "up" : v < -0.005 ? "down" : ""}">${pp(v)}</span>`;
+  return `<span class="hda">${one(d.home)} / ${one(d.draw)} / ${one(d.away)}</span>`;
+}
+
+function rowCells(r) {
+  const next = r.next_snapshot;
+  return [
+    esc(new Date(r.kickoff).toLocaleString([], { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })),
+    null, // countdown
+    `${esc(r.home_team)} v ${esc(r.away_team)}${r.is_monitored ? "" : ' <span class="tag-off">not tracked</span>'}`,
+    esc(r.league),
+    refCell(r),
+    deltaCell(r),
+    `${esc(r.books)} books · ${esc(r.snapshots)} rows<span class="sub">last ${esc(ago(r.last_snapshot))}</span>`,
+    next ? `${esc(next.label)}<span class="sub">${esc(fmtWhen(next.at))}</span>` : `<span class="dim">${r.is_monitored ? "—" : "stopped"}</span>`,
+  ];
+}
+
+const scoreVal = (v) => (v == null ? "" : String(v));
+
+function buildRow(r) {
+  const cells = rowCells(r).map((html, i) => i === 1
+    ? `<td class="c-cd"><span class="countdown" data-start="${esc(r.kickoff)}"></span></td>`
+    : `<td class="c${i}" data-h="">${html}</td>`).join("");
+  return `<tr data-id="${r.id}">${cells}<td class="result-cell">
+      <input type="number" class="result-input" data-side="home" value="${scoreVal(r.home_score)}" placeholder="H" min="0" max="99" aria-label="Home goals" />
+      <span class="dim">-</span>
+      <input type="number" class="result-input" data-side="away" value="${scoreVal(r.away_score)}" placeholder="A" min="0" max="99" aria-label="Away goals" />
+      <button type="button" class="btn btn-ghost result-save" title="Save result" aria-label="Save result">✓</button>
+    </td></tr>`;
+}
+
+function patchRow(tr, r) {
+  rowCells(r).forEach((html, i) => {
+    if (i === 1) return;
+    const td = tr.children[i];
+    if (td.dataset.h !== html) { td.innerHTML = html; td.dataset.h = html; }
+  });
+  for (const [side, v] of [["home", r.home_score], ["away", r.away_score]]) {
+    const input = tr.querySelector(`.result-input[data-side="${side}"]`);
+    if (input.dataset.dirty === "1" || document.activeElement === input) continue; // never wipe typing
+    if (input.value !== scoreVal(v)) input.value = scoreVal(v);
+  }
+}
+
+function renderTable(rows) {
+  const body = $("match-body");
+  if (!rows.length) {
+    body.innerHTML = `<tr><td colspan="9" class="dim empty-row">No matches here yet. Open Discovery to pick some.</td></tr>`;
+    return;
+  }
+  const existing = [...body.querySelectorAll("tr[data-id]")];
+  const same = existing.length === rows.length && existing.every((tr, i) => Number(tr.dataset.id) === rows[i].id);
+  if (!same) {
+    const unsaved = {};
+    for (const inp of body.querySelectorAll('.result-input[data-dirty="1"]')) {
+      const id = inp.closest("tr").dataset.id;
+      (unsaved[id] ||= {})[inp.dataset.side] = inp.value;
+    }
+    body.innerHTML = rows.map(buildRow).join("");
+    for (const [id, sides] of Object.entries(unsaved)) {
+      const tr = body.querySelector(`tr[data-id="${id}"]`);
+      if (!tr) continue;
+      for (const [side, value] of Object.entries(sides)) {
+        const inp = tr.querySelector(`.result-input[data-side="${side}"]`);
+        inp.value = value;
+        inp.dataset.dirty = "1";
+      }
+    }
+  }
+  const trs = body.querySelectorAll("tr[data-id]");
+  rows.forEach((r, i) => patchRow(trs[i], r));
+  tickCountdowns();
+}
+
+async function loadTable() {
+  const qs = currentRound ? `?round_label=${encodeURIComponent(currentRound)}` : "";
+  let data;
+  try { data = await api(`/matches${qs}`); } catch { return; }
+  const sig = `${currentRound}|${JSON.stringify(data.matches)}`;
+  if (sig === lastSig) return; // nothing changed: touch nothing
+  lastSig = sig;
+  renderTable(data.matches);
+  if (openMatchId && data.matches.some((m) => m.id === openMatchId)) refreshDrilldown();
+}
+
+$("match-body").addEventListener("input", (e) => {
+  if (e.target.matches(".result-input")) e.target.dataset.dirty = "1";
+});
+$("match-body").addEventListener("click", async (e) => {
+  const tr = e.target.closest("tr[data-id]");
+  if (!tr) return;
+  const btn = e.target.closest(".result-save");
+  if (btn) {
+    const h = tr.querySelector('.result-input[data-side="home"]'), a = tr.querySelector('.result-input[data-side="away"]');
+    const body = { home_score: h.value === "" ? null : Number(h.value), away_score: a.value === "" ? null : Number(a.value) };
+    btn.disabled = true;
+    try {
+      await api(`/matches/${tr.dataset.id}/result`, { method: "PUT", body: JSON.stringify(body) });
+      delete h.dataset.dirty; delete a.dataset.dirty;
+      btn.classList.add("saved");
+      setTimeout(() => btn.classList.remove("saved"), 1200);
+      lastSig = null;
+      await loadTable();
+    } catch (err) { alert(err.message); } finally { btn.disabled = false; }
+    return;
+  }
+  if (e.target.closest(".result-cell")) return;
+  openDrilldown(Number(tr.dataset.id));
+});
+
+// ---- poller status and manual refresh --------------------------------------
+async function loadPoller() {
+  try {
+    const p = await api("/poller");
+    const pill = $("poller-status");
+    const next = p.plan && p.plan.next;
+    pill.textContent = !p.enabled ? "poller off" : !p.leader ? "poller: standby" : next ? `next poll ${fmtWhen(next.at)}` : "poller: idle";
+    pill.title = p.plan ? `${next ? `Next: ${next.sport} (${next.labels.join(", ")}), ${next.cost} credit(s). ` : ""}Plan this month: ${p.plan.calls_this_month} calls, ${p.plan.cost_this_month} credits` +
+      (p.plan.dropped_calls ? `; ${p.plan.dropped_calls} planned refreshes skipped to fit the budget` : "") : "";
+  } catch { /* ignore */ }
+}
+
+$("btn-refresh-round").onclick = async () => {
+  if (!currentRound) return;
+  let q;
+  try { q = await api(`/rounds/refresh-quote?round_label=${encodeURIComponent(currentRound)}`); } catch (e) { alert(e.message); return; }
+  if (!q.cost) { alert("Nothing to refresh: no tracked match before kickoff in this round."); return; }
+  const b = q.budget;
+  const ok = await askYesNo(`Refresh "${currentRound}" now?`,
+    `This makes ${q.leagues.length} paid call(s): ${q.leagues.map((l) => `${l.sport} (${l.matches} matches, ${l.cost} cr)`).join(", ")}.\n` +
+    `Total: ${q.cost} credit(s). Used this month: ${b.used} of ${b.limit}; manual refreshes stop at ${b.pause_line}.`, `Spend ${q.cost} credit(s)`);
+  if (!ok) return;
+  try {
+    const res = await api("/rounds/refresh", { method: "POST", body: JSON.stringify({ round_label: currentRound, expected_cost: q.cost }) });
+    const refused = res.results.filter((r) => !r.allowed);
+    if (refused.length) alert(`Not done: ${refused.map((r) => `${r.sport}: ${r.reason}`).join("; ")}`);
+  } catch (e) { alert(e.message); }
+  lastSig = null;
+  await Promise.all([loadTable(), loadCredits(), loadPoller()]);
+};
+
+// ---------------------------------------------------------------------------
+// Drill-down
+// ---------------------------------------------------------------------------
+const BOOK_COLORS = ["#2dffa0", "#38d6ff", "#9b7bff", "#ffd93d", "#ff9f1a", "#ff6b9d", "#7ee787", "#79c0ff", "#d2a8ff", "#ffa657", "#56d4dd", "#f778ba"];
+let openMatchId = null, ddData = null, ddSide = "home", charts = [];
+const bookTitle = (k) => (D.books.find((b) => b.key === k) || {}).title || k;
+
+let chartObservers = [];
+function destroyCharts() {
+  chartObservers.forEach((o) => o.disconnect()); // stop resize callbacks before the charts go
+  chartObservers = [];
+  charts.forEach((c) => c.remove());
+  charts = [];
+}
+
+function makeChart(id) {
+  const el = $(id);
+  el.innerHTML = "";
+  if (typeof LightweightCharts === "undefined") { el.innerHTML = `<div class="dim pad">Charts library did not load (offline?).</div>`; return null; }
+  const chart = LightweightCharts.createChart(el, {
+    width: el.clientWidth, height: el.clientHeight,
+    layout: { background: { color: "#070e1b" }, textColor: "#a9c4e8", fontFamily: "monospace" },
+    grid: { vertLines: { color: "#12223a" }, horzLines: { color: "#12223a" } },
+    rightPriceScale: { borderColor: "#1c3354" }, timeScale: { borderColor: "#1c3354", timeVisible: true },
+  });
+  const obs = new ResizeObserver(() => { if (el.clientWidth) chart.applyOptions({ width: el.clientWidth }); });
+  obs.observe(el);
+  chartObservers.push(obs);
+  charts.push(chart);
+  return chart;
+}
+
+function seriesByBook(rows, value) {
+  const out = new Map();
+  for (const r of rows) {
+    const v = value(r);
+    if (v == null || !isFinite(v)) continue;
+    if (!out.has(r.bookmaker)) out.set(r.bookmaker, []);
+    const t = Math.floor(new Date(r.captured_at).getTime() / 1000);
+    const arr = out.get(r.bookmaker);
+    if (arr.length && arr[arr.length - 1].time === t) arr[arr.length - 1].value = v; else arr.push({ time: t, value: v });
+  }
+  return out;
+}
+
+function drawLines(chartId, legendId, rows, value, fmt) {
+  const chart = makeChart(chartId);
+  const series = seriesByBook(rows, value);
+  const books = [...series.keys()].sort((a, b) => (a === "pinnacle" ? -1 : b === "pinnacle" ? 1 : a.localeCompare(b)));
+  const legend = [];
+  books.forEach((bk, i) => {
+    const color = BOOK_COLORS[i % BOOK_COLORS.length];
+    legend.push(`<span class="swatch"><span class="dot" style="background:${color}"></span>${esc(bookTitle(bk))}</span>`);
+    if (chart) chart.addLineSeries({ color, lineWidth: bk === "pinnacle" ? 3 : 2, pointMarkersVisible: true,
+      priceFormat: { type: "custom", formatter: fmt } }).setData(series.get(bk));
+  });
+  $(legendId).innerHTML = legend.join("") || `<span class="dim">No snapshots yet.</span>`;
+  if (chart) chart.timeScale().fitContent();
+}
+
+function renderDrilldown() {
+  const d = ddData, m = d.match;
+  $("dd-title").textContent = `${m.home_team} v ${m.away_team}`;
+  $("dd-league").textContent = m.league_title || m.sport_key;
+  const cd = $("dd-countdown");
+  cd.dataset.start = m.commence_time;
+  $("dd-monitor").textContent = m.is_monitored ? "Stop tracking" : "Resume tracking";
+  $("dd-monitor").disabled = !m.is_monitored && new Date(m.commence_time) <= new Date();
+
+  const h2h = d.snapshots.filter((s) => s.market === "h2h");
+  const latest = new Map();
+  for (const s of h2h) latest.set(s.bookmaker, s);
+  const g = d.gap_minutes;
+  const gapText = g.median == null ? "Only one snapshot time so far."
+    : `Snapshot times are ${g.min}–${g.max} min apart (median ${g.median} min). Lines connect snapshots; nothing is known about the price between them.`;
+  $("dd-gap-note").textContent = gapText;
+
+  const card = (title, value, sub) => `<div class="card"><h4>${esc(title)}</h4><div class="value">${value}</div><div class="sub">${sub}</div></div>`;
+  $("dd-cards").innerHTML = [
+    card("Kickoff", esc(fmtWhen(m.commence_time)), esc(m.round_label || "")),
+    card("Bookmakers priced", esc(latest.size), `${esc(d.settings ? d.settings.bookmakers.length : 0)} requested`),
+    card("Snapshot times", esc(d.capture_times.length), `${esc(d.snapshots.length)} stored rows (only changes are stored)`),
+    card("Paid polls of this league", esc(d.polls.length), d.polls.length ? `last ${esc(ago(d.polls[d.polls.length - 1].t))}` : "none yet"),
+  ].join("");
+
+  const rows = [...latest.values()].sort((a, b) => (a.bookmaker === "pinnacle" ? -1 : b.bookmaker === "pinnacle" ? 1 : a.bookmaker.localeCompare(b.bookmaker)));
+  $("dd-latest-note").textContent = rows.length ? "Back prices, decimal odds; fair % after power de-vig." : "";
+  const margin = (r) => ((1 / r.home_price + (r.draw_price ? 1 / r.draw_price : 0) + 1 / r.away_price - 1) * 100);
+  $("dd-latest").innerHTML = rows.length ? `<table class="book-table"><thead><tr><th>Bookmaker</th><th>Home</th><th>Draw</th><th>Away</th><th>Fair H/D/A %</th><th>Margin</th><th>Seen</th></tr></thead><tbody>` +
+    rows.map((r) => `<tr><td>${esc(bookTitle(r.bookmaker))}</td><td>${esc(r.home_price)}</td><td>${esc(r.draw_price ?? "—")}</td><td>${esc(r.away_price)}</td>
+      <td>${pct(r.fair_home)} / ${pct(r.fair_draw)} / ${pct(r.fair_away)}</td><td>${margin(r).toFixed(2)}%</td><td>${esc(ago(r.captured_at))}</td></tr>`).join("") +
+    `</tbody></table>` : `<div class="dim pad">No prices stored yet. The first snapshot is taken by the poller shortly after a match is added.</div>`;
+
+  document.querySelectorAll("#dd-side .seg-btn").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.side === ddSide)));
+  destroyCharts();
+  drawLines("chart-fair", "legend-fair", h2h, (r) => r[`fair_${ddSide}`] * 100, (v) => `${v.toFixed(1)}%`);
+  drawLines("chart-margin", "legend-margin", h2h, margin, (v) => `${v.toFixed(2)}%`);
+
+  $("dd-plan").innerHTML = d.plan.length
+    ? `<ul class="plan-list">${d.plan.map((p) => `<li class="${p.dropped ? "dropped" : ""}"><b>${esc(p.label)}</b> ${esc(fmtWhen(p.at))}${p.dropped ? " — skipped to fit the credit budget" : p.this_month ? "" : " — next month's budget"}</li>`).join("")}</ul>`
+    : `<span class="dim">${m.is_monitored ? "No more snapshots planned." : "Not tracked: no snapshots planned."}</span>`;
+  tickCountdowns();
+}
+
+async function refreshDrilldown() {
+  if (!openMatchId) return;
+  try { ddData = await api(`/matches/${openMatchId}`); } catch { return; }
+  renderDrilldown();
+}
+
+async function openDrilldown(id) {
+  openMatchId = id;
+  $("drilldown").classList.remove("hidden");
+  document.body.classList.add("dd-open");
+  if (!D.books.length) { try { D.books = (await api("/discovery/bookmakers")).bookmakers; } catch { /* titles fall back to keys */ } }
+  await refreshDrilldown();
+}
+
+function closeDrilldown() {
+  openMatchId = null;
+  destroyCharts();
+  $("drilldown").classList.add("hidden");
+  document.body.classList.remove("dd-open");
+}
+
+$("dd-close").onclick = closeDrilldown;
+$("dd-side").addEventListener("click", (e) => {
+  const side = e.target.dataset.side;
+  if (side && ddData) { ddSide = side; renderDrilldown(); }
+});
+$("dd-monitor").onclick = async () => {
+  if (!ddData) return;
+  const on = !ddData.match.is_monitored;
+  if (!on && !(await askYesNo("Stop tracking this match?", "No more snapshots will be bought for it. You can resume before kickoff.", "Stop tracking"))) return;
+  try { await api(`/matches/${openMatchId}/monitor?on=${on}`, { method: "PUT" }); } catch (e) { alert(e.message); }
+  lastSig = null;
+  await Promise.all([refreshDrilldown(), loadTable()]);
+};
+
+// ---------------------------------------------------------------------------
+// Storage
+// ---------------------------------------------------------------------------
+const fmtBytes = (n) => (n >= 1e9 ? `${(n / 1e9).toFixed(2)} GB` : n >= 1e6 ? `${(n / 1e6).toFixed(1)} MB` : `${Math.round(n / 1e3)} kB`);
+
+async function refreshStoragePill() {
+  try {
+    const u = await api("/storage/status");
+    const pill = $("storage-pill");
+    pill.textContent = `DB ${u.used_pct.toFixed(1)}%`;
+    pill.className = `pill storage-pill storage-${u.level}`;
+    pill.title = `${fmtBytes(u.used_bytes)} of ${fmtBytes(u.limit_bytes)}${u.collection_paused ? " - collection paused" : ""}`;
+  } catch { /* ignore */ }
+}
+
+async function loadStorage() {
+  const s = await api("/storage");
+  const u = s.usage;
+  const fill = $("storage-bar-fill");
+  fill.style.width = `${Math.min(100, u.used_pct)}%`;
+  fill.className = `storage-bar-fill storage-${u.level}`;
+  $("storage-summary").textContent = `${fmtBytes(u.used_bytes)} of ${fmtBytes(u.limit_bytes)} (${u.used_pct}%). ` +
+    (u.collection_paused ? "Collection is PAUSED until space is freed. " : "") +
+    (s.pending_delete_matches ? `${s.pending_delete_matches} deleted matches are still being cleared.` : "");
+  $("storage-table-body").innerHTML = s.rounds.length ? s.rounds.map((r) => `<tr>
+      <td>${esc(r.round_label)}</td><td>${esc(r.matches)}</td><td>${esc(r.snapshots)}</td><td>${esc(fmtBytes(r.est_bytes))}</td>
+      <td>${r.downloaded_at ? esc(fmtWhen(r.downloaded_at)) : '<span class="warn-text">never</span>'}</td>
+      <td><button class="btn btn-danger btn-sm" data-del="${esc(r.round_label)}" ${r.active ? 'disabled title="Stop tracking its matches first"' : ""}>Delete</button></td>
+    </tr>`).join("") : `<tr><td colspan="6" class="dim">No rounds.</td></tr>`;
+}
+
+$("storage-pill").onclick = async () => { modal("modal-storage", true); $("storage-message").textContent = ""; await loadStorage(); };
+$("btn-storage-close").onclick = () => modal("modal-storage", false);
+$("storage-table-body").addEventListener("click", async (e) => {
+  const label = e.target.dataset.del;
+  if (!label) return;
+  if (!(await askYesNo(`Delete round "${label}"?`, "Its matches and every snapshot are removed for good.", "Delete"))) return;
+  const del = (extra) => fetch(`${API}/rounds?round_label=${encodeURIComponent(label)}${extra}`, { method: "DELETE" });
+  let res = await del("");
+  if (res.status === 409 && (await res.clone().json()).detail.startsWith("never_downloaded")) {
+    const sure = await askYesNo("This round was never downloaded",
+      "There is no CSV copy of this round anywhere. Deleting it loses its data for good. Delete anyway?", "Delete without a copy");
+    if (!sure) return;
+    res = await del("&allow_undownloaded=true");
+  }
+  const body = await res.json();
+  $("storage-message").textContent = res.ok ? `Deleted "${label}" (${body.deleted_matches} matches).` : body.detail;
+  await Promise.all([loadStorage(), loadRounds(), refreshStoragePill()]);
+  lastSig = null;
+  loadTable();
+});
+$("btn-reclaim").onclick = async () => {
+  $("storage-message").textContent = "Reclaiming…";
+  try {
+    const r = await api("/storage/reclaim", { method: "POST" });
+    $("storage-message").textContent = `Done: ${fmtBytes(r.before_bytes)} → ${fmtBytes(r.after_bytes)}.` + (r.skipped.length ? ` Skipped (not enough room): ${r.skipped.join(", ")}.` : "");
+  } catch (e) { $("storage-message").textContent = e.message; }
+  await Promise.all([loadStorage(), refreshStoragePill()]);
+};
 
 // ---------------------------------------------------------------------------
 // Discovery
@@ -423,7 +828,11 @@ $("btn-add-round").onclick = async () => {
     status.className = "small ok";
     status.textContent = `Added ${res.added} match${res.added === 1 ? "" : "es"} to "${res.round_label}" (0 credits spent).`;
     D.selectedEvents.clear();
+    currentRound = res.round_label;
+    store.set("so.round", currentRound);
+    lastSig = null;
     await Promise.all([loadRounds(), loadEvents(false)]);
+    loadTable();
   } catch (e) {
     status.className = "small err";
     status.textContent = e.message;
@@ -434,10 +843,17 @@ $("btn-add-round").onclick = async () => {
 
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
-  for (const id of ["modal-discovery", "modal-credits"]) modal(id, false);
+  if (!$("modal-confirm").classList.contains("hidden")) return; // the confirm box answers itself
+  if (openMatchId && document.querySelectorAll(".modal:not(.hidden)").length === 0) { closeDrilldown(); return; }
+  for (const id of ["modal-discovery", "modal-credits", "modal-storage"]) modal(id, false);
 });
 
 // ---------------------------------------------------------------------------
 loadCredits();
-loadRounds();
+loadRounds().then(loadTable);
+loadPoller();
+refreshStoragePill();
+setInterval(loadTable, 20000);
+setInterval(loadPoller, 30000);
 setInterval(loadCredits, 60000);
+setInterval(refreshStoragePill, 120000);

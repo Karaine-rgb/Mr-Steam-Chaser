@@ -102,3 +102,16 @@ def test_no_secrets_or_account_names_in_repo():
             if pat.search(text):
                 hits.append(f"{path.relative_to(ROOT)}: {pat.pattern}")
     assert hits == []
+
+
+def test_frontend_has_no_duplicate_function_names():
+    """Plain scripts silently let a later function replace an earlier one of the
+    same name (this bit once: two renderMatches functions)."""
+    text = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    names = re.findall(r"^\s*(?:async\s+)?function\s+(\w+)", text, re.M)
+    assert sorted({n for n in names if names.count(n) > 1}) == []
+
+
+def test_frontend_loads_no_third_party_scripts():
+    html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
+    assert re.findall(r"<script[^>]+src=\"https?://", html) == []

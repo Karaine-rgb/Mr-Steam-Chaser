@@ -40,7 +40,7 @@ async def test_discovery_ui_all_widths(pg_server, tmp_path):
     port = _free_port()
     env = {k: v for k, v in os.environ.items() if not k.startswith("PYTEST")}
     env.update({"DATABASE_URL": pg_server.replace("/postgres?", f"/{name}?"), "ODDS_API_MOCK": "1",
-                "ODDS_API_KEY": ""})
+                "ODDS_API_KEY": "", "POLL_TICK_SECONDS": "2"})
     server = subprocess.Popen([sys.executable, "-m", "uvicorn", "main:app", "--port", str(port)],
                               cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     try:
