@@ -156,6 +156,7 @@ const ago = (iso) => {
 let rounds = [];
 let currentRound = store.get("so.round", "");
 let lastSig = null;
+let lastResultSig = null;
 
 async function loadRounds() {
   try { rounds = await api("/rounds"); } catch { rounds = []; }
@@ -166,6 +167,12 @@ async function loadRounds() {
   sel.value = currentRound;
   $("round-names").innerHTML = rounds.map((r) => `<option value="${esc(r.round_label)}"></option>`).join("");
   $("btn-refresh-round").disabled = !currentRound;
+  for (const [id, path] of [["btn-download", "round.csv"], ["btn-download-polls", "round-polls.csv"]]) {
+    const a = $(id);
+    a.href = currentRound ? `${API}/export/${path}?round_label=${encodeURIComponent(currentRound)}` : "#";
+    a.classList.toggle("disabled-link", !currentRound);
+    a.setAttribute("aria-disabled", String(!currentRound));
+  }
   const r = rounds.find((x) => x.round_label === currentRound);
   $("schedule-note").textContent = r
     ? `${r.bookmakers.length} bookmakers · ${r.markets.join(", ")} · ${r.schedule_preset} schedule. Snapshots are hours apart far from kickoff; that is set by the credit budget, not the API.`
@@ -176,6 +183,7 @@ $("round-select").addEventListener("change", (e) => {
   currentRound = e.target.value;
   store.set("so.round", currentRound);
   lastSig = null;
+  lastResultSig = null;
   loadRounds();
   loadTable();
 });
@@ -187,11 +195,20 @@ function refCell(r) {
   return `<span class="hda"><b>${pct(ref.home)}</b> / ${pct(ref.draw)} / <b>${pct(ref.away)}</b></span><span class="sub">${esc(src)}</span>`;
 }
 
+const SIDE_NAME = { home: "Home", draw: "Draw", away: "Away" };
+
+function steamChips(steam) {
+  if (!steam || !steam.length) return "";
+  return `<span class="steam-chips">${steam.map((x) => `<span class="steam-chip ${x.confirmed ? "confirmed" : ""}"
+      title="${x.confirmed ? "Confirmed: steam in 2+ bookmakers at overlapping times" : "Steam in one bookmaker only"}">
+      ${esc(SIDE_NAME[x.side])} ${esc(x.biggest_pp.toFixed(1))}pp · ${esc(x.books)} bk${x.confirmed ? " ✓" : ""}</span>`).join("")}</span>`;
+}
+
 function deltaCell(r) {
   const d = r.delta_pp;
-  if (!d) return `<span class="dim">—</span>`;
   const one = (v) => `<span class="${v > 0.005 ? "up" : v < -0.005 ? "down" : ""}">${pp(v)}</span>`;
-  return `<span class="hda">${one(d.home)} / ${one(d.draw)} / ${one(d.away)}</span>`;
+  const move = d ? `<span class="hda">${one(d.home)} / ${one(d.draw)} / ${one(d.away)}</span>` : `<span class="dim">—</span>`;
+  return move + steamChips(r.steam);
 }
 
 function rowCells(r) {
@@ -273,6 +290,8 @@ async function loadTable() {
   if (sig === lastSig) return; // nothing changed: touch nothing
   lastSig = sig;
   renderTable(data.matches);
+  const resultSig = data.matches.map((m) => `${m.id}:${m.home_score}:${m.away_score}:${(m.steam || []).length}`).join(",");
+  if (resultSig !== lastResultSig) { lastResultSig = resultSig; loadScorecard(); }
   if (openMatchId && data.matches.some((m) => m.id === openMatchId)) refreshDrilldown();
 }
 
@@ -300,6 +319,35 @@ $("match-body").addEventListener("click", async (e) => {
   if (e.target.closest(".result-cell")) return;
   openDrilldown(Number(tr.dataset.id));
 });
+
+// ---- scorecard ----------------------------------------------------------------
+const scPct = (right, n) => (n ? `${Math.round((right / n) * 100)}%` : "—");
+
+function scCells(t) {
+  if (!t || !t.settled) return `<div class="sc-empty dim">No final scores entered for this round yet.</div>`;
+  const e = t.engine, st = t.steam, c = t.converged;
+  return `
+    <div class="sc-cell sc-engine"><h4>Engine favourite</h4><span class="sc-value">${e.right}/${e.picks}</span><span class="sc-pct">${scPct(e.right, e.picks)}</span>
+      <div class="sc-sub">${e.no_pick} without a pick (level opening prices)</div></div>
+    <div class="sc-cell sc-steam"><h4>Confirmed steam</h4><span class="sc-value">${st.right}/${st.flagged}</span><span class="sc-pct">${scPct(st.right, st.flagged)}</span>
+      <div class="sc-sub">${st.flagged ? `covers ${st.avg_sides} side(s) on average; blind picks of as many sides: ~${st.chance_right} right` : "no match with confirmed steam"}</div></div>
+    <div class="sc-cell sc-conv"><h4>Both agree</h4><span class="sc-value">${c.right}/${c.count}</span><span class="sc-pct">${scPct(c.right, c.count)}</span>
+      <div class="sc-sub">engine favourite was also a confirmed steam side</div></div>
+    <div class="sc-cell"><h4>Results in</h4><span class="sc-value">${t.settled}</span><div class="sc-sub">matches with a final score</div></div>`;
+}
+
+async function loadScorecard() {
+  let d;
+  try { d = await api(`/scorecard${currentRound ? `?round_label=${encodeURIComponent(currentRound)}` : ""}`); } catch { return; }
+  $("sc-round").textContent = currentRound ? currentRound : "all rounds";
+  $("sc-cells").innerHTML = scCells(currentRound ? d.round : d.all);
+  const row = (label, t, cls = "") => `<tr class="${cls}"><td>${esc(label)}</td><td>${t.settled}</td>
+    <td>${t.engine.right}/${t.engine.picks}</td><td>${t.steam.right}/${t.steam.flagged} <span class="dim">(chance ~${t.steam.chance_right})</span></td>
+    <td>${t.converged.right}/${t.converged.count}</td></tr>`;
+  $("sc-body").innerHTML = d.rounds.length
+    ? d.rounds.map((r) => row(r.round_label, r, r.round_label === currentRound ? "sc-current" : "")).join("") + row("All rounds", d.all, "sc-total")
+    : `<tr><td colspan="5" class="dim">No results yet.</td></tr>`;
+}
 
 // ---- poller status and manual refresh --------------------------------------
 async function loadPoller() {
@@ -385,7 +433,7 @@ function drawLines(chartId, legendId, rows, value, fmt) {
   books.forEach((bk, i) => {
     const color = BOOK_COLORS[i % BOOK_COLORS.length];
     legend.push(`<span class="swatch"><span class="dot" style="background:${color}"></span>${esc(bookTitle(bk))}</span>`);
-    if (chart) chart.addLineSeries({ color, lineWidth: bk === "pinnacle" ? 3 : 2, pointMarkersVisible: true,
+    if (chart) chart.addLineSeries({ color, lineWidth: bk === "pinnacle" ? 3 : 2, pointMarkersVisible: true, lineType: 1,
       priceFormat: { type: "custom", formatter: fmt } }).setData(series.get(bk));
   });
   $(legendId).innerHTML = legend.join("") || `<span class="dim">No snapshots yet.</span>`;
@@ -404,31 +452,64 @@ function renderDrilldown() {
   const h2h = d.snapshots.filter((s) => s.market === "h2h");
   const latest = new Map();
   for (const s of h2h) latest.set(s.bookmaker, s);
-  const g = d.gap_minutes;
-  const gapText = g.median == null ? "Only one snapshot time so far."
-    : `Snapshot times are ${g.min}–${g.max} min apart (median ${g.median} min). Lines connect snapshots; nothing is known about the price between them.`;
+  const g = d.analysis.gaps;
+  const gapText = g.median_minutes == null ? "Only one snapshot so far."
+    : `Snapshots are ${g.min_minutes}–${g.max_minutes} min apart (median ${g.median_minutes} min). Each step holds a price until the next snapshot; nothing is known about the price in between.`;
   $("dd-gap-note").textContent = gapText;
 
   const card = (title, value, sub) => `<div class="card"><h4>${esc(title)}</h4><div class="value">${value}</div><div class="sub">${sub}</div></div>`;
   $("dd-cards").innerHTML = [
     card("Kickoff", esc(fmtWhen(m.commence_time)), esc(m.round_label || "")),
     card("Bookmakers priced", esc(latest.size), `${esc(d.settings ? d.settings.bookmakers.length : 0)} requested`),
-    card("Snapshot times", esc(d.capture_times.length), `${esc(d.snapshots.length)} stored rows (only changes are stored)`),
-    card("Paid polls of this league", esc(d.polls.length), d.polls.length ? `last ${esc(ago(d.polls[d.polls.length - 1].t))}` : "none yet"),
+    card("Snapshots of this match", esc(g.polls), `${esc(d.snapshots.length)} stored rows (only price changes are stored)`),
+    card("Paid polls of this league", esc(d.polls.length), d.polls.length ? `last ${esc(ago(d.polls[d.polls.length - 1].t))}` : "none recorded"),
   ].join("");
 
-  const rows = [...latest.values()].sort((a, b) => (a.bookmaker === "pinnacle" ? -1 : b.bookmaker === "pinnacle" ? 1 : a.bookmaker.localeCompare(b.bookmaker)));
-  $("dd-latest-note").textContent = rows.length ? "Back prices, decimal odds; fair % after power de-vig." : "";
-  const margin = (r) => ((1 / r.home_price + (r.draw_price ? 1 / r.draw_price : 0) + 1 / r.away_price - 1) * 100);
-  $("dd-latest").innerHTML = rows.length ? `<table class="book-table"><thead><tr><th>Bookmaker</th><th>Home</th><th>Draw</th><th>Away</th><th>Fair H/D/A %</th><th>Margin</th><th>Seen</th></tr></thead><tbody>` +
-    rows.map((r) => `<tr><td>${esc(bookTitle(r.bookmaker))}</td><td>${esc(r.home_price)}</td><td>${esc(r.draw_price ?? "—")}</td><td>${esc(r.away_price)}</td>
-      <td>${pct(r.fair_home)} / ${pct(r.fair_draw)} / ${pct(r.fair_away)}</td><td>${margin(r).toFixed(2)}%</td><td>${esc(ago(r.captured_at))}</td></tr>`).join("") +
-    `</tbody></table>` : `<div class="dim pad">No prices stored yet. The first snapshot is taken by the poller shortly after a match is added.</div>`;
+  const a = d.analysis, cmp = a.comparison;
+  const ref = cmp.reference;
+  $("dd-latest-note").textContent = ref
+    ? `Reference: ${ref.source === "pinnacle" ? "Pinnacle" : `consensus (median of ${ref.books} books)`}. Best price per outcome is highlighted. Off = fair % minus the reference, in pp.`
+    : "";
+  const cell = (b, side) => `<td class="${b.is_best[side] ? "best" : ""}">${esc(b.prices[side] ?? "—")}</td>`;
+  const off = (b) => {
+    const v = b.off_market_pp;
+    const one = (x) => `<span class="${Math.abs(x) >= 2 ? "far" : ""}">${pp(x)}</span>`;
+    return `${one(v.home)} / ${one(v.draw)} / ${one(v.away)}`;
+  };
+  $("dd-latest").innerHTML = cmp.books.length ? `<table class="book-table cmp"><thead><tr><th>Bookmaker</th><th>Home</th><th>Draw</th><th>Away</th><th>Fair H/D/A %</th><th>Margin</th><th>Off (pp)</th></tr></thead><tbody>` +
+    cmp.books.map((b) => `<tr><td>${esc(bookTitle(b.bookmaker))}${b.bookmaker === "pinnacle" ? ' <span class="tag-ref">ref</span>' : ""}</td>
+      ${cell(b, "home")}${cell(b, "draw")}${cell(b, "away")}
+      <td>${pct(b.fair.home)} / ${pct(b.fair.draw)} / ${pct(b.fair.away)}</td><td>${b.margin_pct == null ? "—" : b.margin_pct.toFixed(2) + "%"}</td><td>${off(b)}</td></tr>`).join("") +
+    `</tbody></table><p class="dim small">Spread between books (max − min fair %): home ${cmp.spread_pp.home} pp, draw ${cmp.spread_pp.draw} pp, away ${cmp.spread_pp.away} pp.</p>`
+    : `<div class="dim pad">No prices stored yet. The first snapshot is taken by the poller shortly after a match is added.</div>`;
 
+  const gp = a.gaps;
+  $("dd-steam-note").textContent = (gp.median_minutes == null
+    ? `Only ${gp.polls} snapshot(s) so far: steam needs a series. `
+    : `Snapshots for this match are ${gp.min_minutes}–${gp.max_minutes} min apart (median ${gp.median_minutes} min). `) +
+    `A steam reading looks at the last ${gp.steam_window_minutes / 60} h; any window the snapshots cannot resolve is skipped, not estimated. ` +
+    "So these labels only describe how prices moved between snapshots, not how fast. The predecessor tool's backtest found steam gives no reliable edge even with 15-minute data.";
+  const sides = a.steam.sides;
+  $("dd-steam").innerHTML = sides.length ? `<ul class="steam-list">${sides.map((x) => `<li>
+      <span class="steam-side">${esc(SIDE_NAME[x.side])}</span>
+      ${x.confirmed ? `<span class="badge-ok">confirmed in ${esc(x.confirmed_books.length)} books</span>` : `<span class="badge-dim">1 book only</span>`}
+      <span>biggest ${esc(x.biggest_pp.toFixed(2))} pp at ${esc(bookTitle(x.biggest_book))}, ${esc(x.timing || "")} (${esc(fmtWhen(x.from))} → ${esc(fmtTime(x.to))})</span>
+      <span class="dim">books: ${x.books.map((b) => esc(bookTitle(b))).join(", ")}</span></li>`).join("")}</ul>`
+    : `<div class="dim">No steam move in any bookmaker${gp.polls < 3 ? " (too few snapshots yet)" : ""}.</div>`;
+  const eng = a.engine;
+  const engCard = card("Engine favourite", eng.favorite ? esc(SIDE_NAME[eng.favorite]) : "no pick",
+    eng.favorite ? `${esc(eng.source === "pinnacle" ? "Pinnacle" : "consensus")} opening ${esc(eng.favorite_prob.toFixed(1))}%${eng.lead_change ? ` · lead change ${esc(eng.lead_change_gap_pp.toFixed(1))} pp` : ""}` : "level opening prices");
+  $("dd-cards").insertAdjacentHTML("beforeend", engCard);
+
+  const margin = (r) => ((1 / r.home_price + (r.draw_price ? 1 / r.draw_price : 0) + 1 / r.away_price - 1) * 100);
   document.querySelectorAll("#dd-side .seg-btn").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.side === ddSide)));
   destroyCharts();
-  drawLines("chart-fair", "legend-fair", h2h, (r) => r[`fair_${ddSide}`] * 100, (v) => `${v.toFixed(1)}%`);
-  drawLines("chart-margin", "legend-margin", h2h, margin, (v) => `${v.toFixed(2)}%`);
+  // Charts use the series rebuilt at every poll (stored rows are changes only).
+  const polled = Object.entries(a.series).flatMap(([bookmaker, rows]) => rows.map((x) => ({
+    bookmaker, captured_at: x[0], fair_home: x[1], fair_draw: x[2], fair_away: x[3],
+    home_price: x[4], draw_price: x[5], away_price: x[6] })));
+  drawLines("chart-fair", "legend-fair", polled, (r) => r[`fair_${ddSide}`] * 100, (v) => `${v.toFixed(1)}%`);
+  drawLines("chart-margin", "legend-margin", polled, margin, (v) => `${v.toFixed(2)}%`);
 
   $("dd-plan").innerHTML = d.plan.length
     ? `<ul class="plan-list">${d.plan.map((p) => `<li class="${p.dropped ? "dropped" : ""}"><b>${esc(p.label)}</b> ${esc(fmtWhen(p.at))}${p.dropped ? " — skipped to fit the credit budget" : p.this_month ? "" : " — next month's budget"}</li>`).join("")}</ul>`

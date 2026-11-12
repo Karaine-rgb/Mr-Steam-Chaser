@@ -60,6 +60,41 @@ async function run() {
     check((await overflow(page)).length === 0, `${width}px main page overflow: ${JSON.stringify(await overflow(page))}`);
     check(await page.isVisible("#mock-pill"), `${width}px mock pill not shown`);
 
+    // ---- seeded finished round: steam chips, scorecard, steam panel, export ----
+    await page.selectOption("#round-select", "Seeded steam demo");
+    await page.waitForFunction(() => document.querySelectorAll("#match-body tr[data-id]").length === 3);
+    await page.waitForSelector("#match-body .steam-chip.confirmed");
+    check(await page.locator("#match-body .steam-chip.confirmed").count() === 1, `${width}px expected 1 confirmed steam chip`);
+    check(await page.locator("#match-body .steam-chip:not(.confirmed)").count() === 1, `${width}px expected 1 unconfirmed chip`);
+    await page.waitForFunction(() => /\d+\/\d+/.test(document.getElementById("sc-cells").textContent));
+    const sc = await page.textContent("#sc-cells");
+    check(/Confirmed steam\s*1\/1/.test(sc), `${width}px scorecard steam cell: ${sc}`);
+    check((await overflow(page)).length === 0, `${width}px seeded round overflow: ${JSON.stringify(await overflow(page))}`);
+    if (SHOTS) await page.screenshot({ path: `${SHOTS}/seeded-${width}.png`, fullPage: true });
+    await page.locator("#match-body tr[data-id] td.c2", { hasText: "Seed Home FC" }).click();
+    await page.waitForSelector("#dd-steam .badge-ok");
+    const steamText = await page.textContent("#dd-steam");
+    check(/Home/.test(steamText) && /confirmed in 2 books/.test(steamText), `${width}px steam panel: ${steamText}`);
+    check(/30–30 min apart/.test(await page.textContent("#dd-steam-note")), `${width}px gap note missing`);
+    check(await page.locator("#dd-latest td.best").count() >= 3, `${width}px best prices not highlighted`);
+    await page.waitForSelector("#chart-fair canvas");
+    await page.waitForTimeout(300);
+    check((await overflow(page, "#drilldown")).length === 0, `${width}px seeded drill-down overflow: ${JSON.stringify(await overflow(page, "#drilldown"))}`);
+    if (SHOTS) await page.screenshot({ path: `${SHOTS}/seeded-dd-${width}.png` });
+    await page.click("#dd-close");
+    const href = await page.getAttribute("#btn-download", "href");
+    const csvText = await (await page.request.get(BASE + href)).text();
+    check(csvText.split("\n")[0].startsWith("round_label,matchup_id,event_id"), `${width}px CSV header: ${csvText.slice(0, 80)}`);
+    if (i === WIDTHS.length - 1) {
+      // downloaded, so deleting asks only the normal question
+      await page.click("#storage-pill");
+      await page.waitForSelector('#storage-table-body button[data-del="Seeded steam demo"]');
+      await page.click('#storage-table-body button[data-del="Seeded steam demo"]');
+      await page.click("#confirm-yes");
+      await page.waitForFunction(() => /Deleted "Seeded steam demo"/.test(document.getElementById("storage-message").textContent));
+      await page.click("#btn-storage-close");
+    }
+
     // Discovery
     await page.click("#btn-discovery");
     await page.waitForSelector("#popular-chips .chip");
@@ -147,14 +182,17 @@ async function run() {
     await page.click("#dd-close");
 
     // refresh-now shows its cost and spends nothing when answered "No"
-    const usedBefore = (await (await page.request.get(BASE + "/api/credits")).json()).budget.used;
+    // count MANUAL calls only: the background poller may legitimately buy a snapshot meanwhile
+    const manualCalls = async () => (await (await page.request.get(BASE + "/api/credits")).json())
+      .recent_paid_calls.filter((c) => c.kind === "manual").length;
+    const usedBefore = await manualCalls();
     await page.click("#btn-refresh-round");
     await page.waitForSelector("#modal-confirm:not(.hidden)");
     const confirmText = await page.textContent("#confirm-text");
     check(/Total: 1 credit/.test(confirmText), `${width}px refresh confirm text: ${confirmText}`);
     await page.click("#confirm-no");
-    const usedAfter = (await (await page.request.get(BASE + "/api/credits")).json()).budget.used;
-    check(usedAfter === usedBefore, `${width}px "No" still spent credits (${usedBefore} -> ${usedAfter})`);
+    const usedAfter = await manualCalls();
+    check(usedAfter === usedBefore, `${width}px "No" still made a manual paid call (${usedBefore} -> ${usedAfter})`);
 
     // storage window
     await page.click("#storage-pill");

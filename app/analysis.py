@@ -176,4 +176,8 @@ def analyse_match(snapshots: list[dict], polls: list[dict], kickoff: datetime | 
         "steam": steam_by_book(series, kickoff),
         "engine": {"source": source, **fav},
         "gaps": poll_gaps(polls),
+        # the rebuilt per-poll series, for charts: [time, fair H, D, A, price H, D, A]
+        "series": {b: [[r["captured_at"].isoformat(), r["fair_home_prob"], r["fair_draw_prob"], r["fair_away_prob"],
+                        r["home_price"], r["draw_price"], r["away_price"]] for r in rows]
+                   for b, rows in series.items()},
     }

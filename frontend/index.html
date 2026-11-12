@@ -52,14 +52,27 @@
     <div class="round-bar">
       <label>Round <select id="round-select"><option value="">All rounds</option></select></label>
       <button id="btn-refresh-round" class="btn btn-primary" disabled>Refresh now</button>
+      <a id="btn-download" class="btn btn-accent disabled-link" aria-disabled="true" href="#" title="One CSV with every stored snapshot of the round">Download CSV</a>
+      <a id="btn-download-polls" class="btn btn-ghost disabled-link" aria-disabled="true" href="#" title="When each match was polled and which bookmakers priced it">Polls CSV</a>
       <span id="poller-status" class="pill pill-dim" title="Background poller">poller …</span>
     </div>
     <p id="schedule-note" class="dim small schedule-note"></p>
+    <section id="scorecard" class="scorecard" aria-label="Scorecard">
+      <div class="sc-head"><h3>Scorecard</h3><span id="sc-round" class="sc-round"></span></div>
+      <div id="sc-cells" class="sc-cells"></div>
+      <p class="sc-note">Engine = opening 1X2 favourite of the reference book (Pinnacle, else the consensus), switched
+        if the other side leads by 2 pp or more at the end. Steam = sides with steam confirmed in at least two bookmakers;
+        right if the winning side was any of them, so it is compared with blind picks of the same number of sides.
+        Matches with a final score only. None of these has been shown to predict results.</p>
+      <details class="sc-all"><summary>All rounds</summary>
+        <div class="sc-table-wrap"><table id="sc-table"><thead><tr><th>Round</th><th>Results in</th><th>Engine</th><th>Steam</th><th>Both</th></tr></thead><tbody id="sc-body"></tbody></table></div>
+      </details>
+    </section>
     <table id="match-table">
       <thead>
         <tr>
           <th>Kickoff</th><th>Kicks off in</th><th>Match</th><th>League</th>
-          <th>1X2 now (fair %)</th><th>Move since first (pp)</th><th>Data</th><th>Next snapshot</th><th>Result</th>
+          <th>1X2 now (fair %)</th><th>Move since first (pp) · steam</th><th>Data</th><th>Next snapshot</th><th>Result</th>
         </tr>
       </thead>
       <tbody id="match-body"><tr><td colspan="9" class="dim">Loading…</td></tr></tbody>
@@ -235,8 +248,13 @@
     </div>
     <section id="dd-cards" class="dd-cards"></section>
     <section class="panel">
-      <div class="panel-head"><h3>Latest prices by bookmaker</h3><span class="dim small" id="dd-latest-note"></span></div>
+      <div class="panel-head"><h3>Bookmakers side by side</h3><span class="dim small" id="dd-latest-note"></span></div>
       <div id="dd-latest" class="book-table-wrap"></div>
+    </section>
+    <section class="panel steam-panel">
+      <div class="panel-head"><h3>Steam by bookmaker</h3></div>
+      <p class="steam-warning" id="dd-steam-note"></p>
+      <div id="dd-steam"></div>
     </section>
     <section class="panel">
       <div class="panel-head">
@@ -253,7 +271,7 @@
     </section>
     <section class="panel">
       <div class="panel-head"><h3>Margin by bookmaker (%)</h3></div>
-      <p class="dim small">Total margin = sum of 1/price − 1, from each stored 1X2 snapshot. Exchange prices are before commission, so their margin can be near zero or negative.</p>
+      <p class="dim small">Total margin = sum of 1/price − 1, at each snapshot (1X2). Exchange prices are before commission, so their margin can be near zero or negative.</p>
       <div class="chart-legend" id="legend-margin"></div>
       <div id="chart-margin" class="chart"></div>
     </section>
