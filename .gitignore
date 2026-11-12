@@ -1,0 +1,29 @@
+# Secrets and local config - never commit
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+env/
+
+# Data exports and dumps
+*.csv
+exports/
+data/
+*.dump
+*.sql.gz
+
+# Browser test output
+test-results/
+playwright-report/
+screenshots/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
