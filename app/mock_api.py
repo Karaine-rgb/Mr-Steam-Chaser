@@ -3,8 +3,9 @@
 Data:
   - app/mock_data/live/*.json are REAL responses recorded on 2026-11-12
     (sports list, EPL and Bundesliga events, one EPL h2h odds call).
-  - Timestamps are shifted so the recorded fixtures always look as far in the
-    future as they did when recorded. The UI keeps working on any date.
+  - Timestamps are shifted by whole days so the recorded fixtures always look
+    about as far in the future as they did when recorded, with their real
+    kickoff clock times. The UI keeps working on any date.
   - Leagues with recorded events but no recorded odds (for example the
     Bundesliga) get SYNTHETIC h2h odds made up from the team names. They are
     plausible numbers for UI work only, not real prices.
@@ -66,7 +67,10 @@ class MockOddsApi:
 
     # -- helpers ------------------------------------------------------
     def _offset(self, name: str) -> timedelta:
-        return self.clock() - _recorded_at(name)
+        # Whole days only, so kickoff times keep their real clock time (15:00
+        # stays 15:00). Matches still look as far ahead as when recorded, give
+        # or take one day.
+        return timedelta(days=(self.clock() - _recorded_at(name)).days)
 
     def _shift(self, value: str, name: str) -> str:
         return _iso(_parse(value) + self._offset(name))
