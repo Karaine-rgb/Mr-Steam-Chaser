@@ -15,3 +15,14 @@ are listed below.
 Do not edit these files. They power mock mode (ODDS_API_MOCK=1) and the tests.
 Cases not seen live (quarter lines, missing books, empty events) are
 hand-written inside the tests and labelled as such.
+
+## Second recording (Phase 3)
+
+`events_<league>.json` for every soccer league marked active in
+`sports_all.json` (45 leagues, 452 events), recorded on 2026-11-12 with
+`GET /v4/sports/<league>/events`. Every call returned `x-requests-last: 0`
+and `x-requests-used` stayed at 1, so this cost nothing. The EPL and
+Bundesliga files from the first recording were kept.
+
+`recordings.json` lists when each file was recorded. Mock mode shifts each
+file's timestamps by its own recording time.

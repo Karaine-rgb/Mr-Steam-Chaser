@@ -28,7 +28,8 @@ from typing import Callable
 import httpx
 
 DATA_DIR = Path(__file__).parent / "mock_data" / "live"
-RECORDED_AT = datetime(2026, 11, 12, 9, 43, 56, tzinfo=timezone.utc)
+RECORDED_AT = datetime(2026, 11, 12, 9, 43, 56, tzinfo=timezone.utc)  # first recording
+
 SYNTHETIC_BOOKS = ("pinnacle", "betfair_ex_eu", "onexbet", "marathonbet", "unibet_uk", "williamhill", "betvictor")
 
 
@@ -47,6 +48,14 @@ def _load(name: str):
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _recorded_at(name: str) -> datetime:
+    """When a fixture file was recorded (recordings.json), so each file is
+    shifted by its own age."""
+    times = _load("recordings.json") or {}
+    value = times.get(name)
+    return _parse(value) if value else RECORDED_AT
+
+
 class MockOddsApi:
     def __init__(self, quota: int = 500, clock: Callable[[], datetime] | None = None, used: int = 0) -> None:
         self.quota = quota
@@ -56,11 +65,11 @@ class MockOddsApi:
         self.requests: list[httpx.Request] = []
 
     # -- helpers ------------------------------------------------------
-    def _offset(self) -> timedelta:
-        return self.clock() - RECORDED_AT
+    def _offset(self, name: str) -> timedelta:
+        return self.clock() - _recorded_at(name)
 
-    def _shift(self, value: str) -> str:
-        return _iso(_parse(value) + self._offset())
+    def _shift(self, value: str, name: str) -> str:
+        return _iso(_parse(value) + self._offset(name))
 
     def _headers(self, last: int) -> dict:
         return {
@@ -73,16 +82,18 @@ class MockOddsApi:
         return httpx.Response(status, json=body, headers=self._headers(last))
 
     def _events(self, sport: str) -> list[dict] | None:
-        events = _load(f"events_{sport}.json")
+        name = f"events_{sport}.json"
+        events = _load(name)
         if events is None:
-            odds = _load(f"odds_{sport}_h2h.json")
+            name = f"odds_{sport}_h2h.json"
+            odds = _load(name)
             if odds is None:
                 return None
             events = [{k: v for k, v in e.items() if k != "bookmakers"} for e in odds]
         out = []
         for e in events:
             e = dict(e)
-            e["commence_time"] = self._shift(e["commence_time"])
+            e["commence_time"] = self._shift(e["commence_time"], name)
             out.append(e)
         return out
 
@@ -114,7 +125,7 @@ class MockOddsApi:
             out = []
             for e in recorded:
                 e = json.loads(json.dumps(e))
-                e["commence_time"] = self._shift(e["commence_time"])
+                e["commence_time"] = self._shift(e["commence_time"], f"odds_{sport}_h2h.json")
                 for b in e.get("bookmakers", []):
                     b["last_update"] = now_iso
                     for m in b.get("markets", []):
