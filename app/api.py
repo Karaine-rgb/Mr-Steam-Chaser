@@ -3,17 +3,23 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from app import db
 from app.config import Settings, load_settings
+from app.catalog import bookmakers as bookmaker_catalog
 from app.credits import CreditManager
-from app.odds_api import OddsApiClient, build_client
+from app.discovery import Discovery, DiscoveryError
+from app.odds_api import OddsApiClient, OddsApiNetworkError, build_client
 from app.planner import estimate_cost
 
 logger = logging.getLogger("api")
+FRONTEND = Path(__file__).resolve().parent.parent / "frontend"
 
 
 class CostQuery(BaseModel):
@@ -21,10 +27,27 @@ class CostQuery(BaseModel):
     bookmakers: list[str] = Field(default_factory=list)
 
 
+class Pick(BaseModel):
+    event_id: str
+    sport_key: str
+
+
+class Selection(BaseModel):
+    matches: list[Pick] = Field(default_factory=list)
+    bookmakers: list[str] = Field(default_factory=list)
+    markets: list[str] = Field(default_factory=lambda: ["h2h"])
+    preset: str = "balanced"
+
+
+class AddToRound(Selection):
+    round_label: str
+
+
 class AppState:
     settings: Settings
     client: OddsApiClient
     credits: CreditManager
+    discovery: Discovery
 
 
 def create_app(settings: Settings | None = None, client: OddsApiClient | None = None, pool=None) -> FastAPI:
@@ -42,6 +65,7 @@ def create_app(settings: Settings | None = None, client: OddsApiClient | None = 
             p, c, settings.monthly_credit_limit, settings.credit_reserve,
             settings.credit_pause_pct, settings.pending_stale_minutes,
         )
+        state.discovery = Discovery(state.credits)
         recovered = await state.credits.recover_stale_pending()
         if recovered:
             logger.warning("Marked %d stale pending paid calls as 'unknown'", recovered)
@@ -56,6 +80,14 @@ def create_app(settings: Settings | None = None, client: OddsApiClient | None = 
                 await db.close_pool()
 
     app = FastAPI(title="Sharp Odds", lifespan=lifespan)
+
+    async def guarded(coro):
+        try:
+            return await coro
+        except DiscoveryError as exc:
+            raise HTTPException(400, str(exc)) from None
+        except OddsApiNetworkError as exc:
+            raise HTTPException(502, f"Odds API unreachable: {exc}") from None
 
     @app.get("/api/health")
     async def health():
@@ -83,6 +115,48 @@ def create_app(settings: Settings | None = None, client: OddsApiClient | None = 
             return {"per_league_refresh": estimate_cost(q.markets, books)}
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from None
+
+    # ---- discovery (free listings only) -------------------------------
+    @app.get("/api/config")
+    async def config():
+        st = state.settings
+        return {"mock": state.client.is_mock, "default_bookmakers": list(st.default_bookmakers),
+                "default_markets": list(st.default_markets), "default_preset": st.schedule_preset}
+
+    @app.get("/api/discovery/leagues")
+    async def discovery_leagues(inactive: bool = False, refresh: bool = False):
+        return await guarded(state.discovery.leagues(inactive, refresh))
+
+    @app.get("/api/discovery/events")
+    async def discovery_events(sports: str = Query(..., min_length=1), refresh: bool = False):
+        keys = [s for s in sports.split(",") if s][:60]
+        return await guarded(state.discovery.events_for(keys, refresh))
+
+    @app.get("/api/discovery/bookmakers")
+    async def discovery_bookmakers():
+        return bookmaker_catalog()
+
+    @app.post("/api/discovery/estimate")
+    async def discovery_estimate(sel: Selection):
+        return await guarded(state.discovery.estimate(
+            [m.model_dump() for m in sel.matches], sel.bookmakers, sel.markets, sel.preset))
+
+    @app.post("/api/rounds/add")
+    async def rounds_add(body: AddToRound):
+        return await guarded(state.discovery.add_to_round(
+            body.round_label, [m.model_dump() for m in body.matches], body.bookmakers, body.markets, body.preset))
+
+    @app.get("/api/rounds")
+    async def rounds_list():
+        return await state.discovery.rounds()
+
+    # ---- frontend --------------------------------------------------------
+    if FRONTEND.exists():
+        app.mount("/static", StaticFiles(directory=FRONTEND), name="static")
+
+        @app.get("/", include_in_schema=False)
+        async def index():
+            return FileResponse(FRONTEND / "index.html", headers={"Cache-Control": "no-cache"})
 
     return app
 
