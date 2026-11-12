@@ -143,5 +143,6 @@ not make it without your approval.
 - What I could verify: asyncpg's own source code (v0.31.0, `connection.py`)
   documents `statement_cache_size=0` as "disable the cache" and comments that
   this is the setting for people "running PgBouncer". The app will expose it as
-  `DB_STATEMENT_CACHE_SIZE` (default 0 when the URL looks like a pooler, else 100).
+  `DB_STATEMENT_CACHE_SIZE` (default 0, which works with both direct and pooled
+  connections at a small speed cost).
   It will be checked against Supabase's docs in Phase 4.
