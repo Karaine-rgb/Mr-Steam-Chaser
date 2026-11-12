@@ -6,11 +6,14 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from app import dashboard, db
+from app.export import record_download, round_csv, round_polls_csv
+from app.round_data import load_matches
+from app.scorecard import read_match, result_side, tally
 from app.config import Settings, load_settings
 from app.catalog import bookmakers as bookmaker_catalog
 from app.credits import CreditManager
@@ -181,9 +184,16 @@ def create_app(settings: Settings | None = None, client: OddsApiClient | None = 
     @app.get("/api/matches")
     async def matches(round_label: str | None = None):
         rows = await dashboard.matches_summary(state.pool, round_label)
+        analysed = {x["match"]["id"]: x["analysis"] for x in await load_matches(state.pool, round_label)}
         for r in rows:
             upcoming = [p for p in state.poller.plan_for(r["event_id"]) if not p.get("dropped")]
             r["next_snapshot"] = upcoming[0] if upcoming and r["is_monitored"] else None
+            a = analysed.get(r["id"])
+            if a:
+                r["steam"] = [{"side": x["side"], "books": len(x["books"]), "confirmed": x["confirmed"],
+                               "biggest_pp": x["biggest_pp"], "timing": x["timing"]} for x in a["steam"]["sides"]]
+                r["engine"] = a["engine"].get("favorite")
+                r["gap_median_minutes"] = a["gaps"]["median_minutes"]
         return {"version": state.poller.version, "matches": rows}
 
     @app.get("/api/matches/{matchup_id}")
@@ -192,7 +202,41 @@ def create_app(settings: Settings | None = None, client: OddsApiClient | None = 
         if detail is None:
             raise HTTPException(404, "no such match")
         detail["plan"] = state.poller.plan_for(detail["match"]["event_id"])
+        (loaded,) = await load_matches(state.pool, matchup_id=matchup_id)
+        detail["analysis"] = loaded["analysis"]
         return detail
+
+    @app.get("/api/scorecard")
+    async def scorecard(round_label: str | None = None):
+        loaded = await load_matches(state.pool)
+        per_round: dict[str, list] = {}
+        for x in loaded:
+            m = x["match"]
+            res = result_side(m["home_score"], m["away_score"])
+            if res is None or not m["round_label"]:
+                continue
+            per_round.setdefault(m["round_label"], []).append({"result": res, **read_match(x["analysis"])})
+        rounds_out = [{"round_label": lb, **tally(ms)} for lb, ms in per_round.items()]
+        everything = [m for ms in per_round.values() for m in ms]
+        return {"round": tally(per_round.get(round_label, [])) if round_label else None,
+                "rounds": rounds_out, "all": tally(everything)}
+
+    def _csv_response(text: str, filename: str) -> Response:
+        safe = "".join(ch if ch.isalnum() or ch in "-_." else "_" for ch in filename)[:120]
+        return Response(text, media_type="text/csv; charset=utf-8",
+                        headers={"Content-Disposition": f'attachment; filename="{safe}"'})
+
+    @app.get("/api/export/round.csv")
+    async def export_round(round_label: str):
+        text, snaps, n = await round_csv(state.pool, round_label)
+        if n == 0:
+            raise HTTPException(404, "no such round")
+        await record_download(state.pool, round_label, snaps)
+        return _csv_response(text, f"sharp-odds-{round_label}.csv")
+
+    @app.get("/api/export/round-polls.csv")
+    async def export_round_polls(round_label: str):
+        return _csv_response(await round_polls_csv(state.pool, round_label), f"sharp-odds-{round_label}-polls.csv")
 
     @app.put("/api/matches/{matchup_id}/result")
     async def match_result(matchup_id: int, body: MatchResult):
